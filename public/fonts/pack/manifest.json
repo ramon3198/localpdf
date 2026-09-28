@@ -1,0 +1,861 @@
+{
+ "aliases": {
+  "adobegaramond": "ebgaramond",
+  "adobegaramondpro": "ebgaramond",
+  "aptos": "inter",
+  "arial": "arimo",
+  "arialblack": "arimo",
+  "arialnarrow": "robotocondensed",
+  "avenir": "figtree",
+  "avenirnext": "figtree",
+  "bahnschrift": "barlow",
+  "bitstreamcharter": "ptserif",
+  "bookantiqua": "ebgaramond",
+  "bookmanoldstyle": "ptserif",
+  "calibri": "carlito",
+  "cambria": "caladea",
+  "candara": "lato",
+  "canvasans": "opensans",
+  "cardo": "ebgaramond",
+  "centurygothic": "montserrat",
+  "centuryschoolbook": "ptserif",
+  "charis": "ptserif",
+  "charissil": "ptserif",
+  "charter": "ptserif",
+  "cmbx": "tinos",
+  "cmcsc": "tinos",
+  "cmr": "tinos",
+  "cmsl": "tinos",
+  "cmss": "arimo",
+  "cmti": "tinos",
+  "cmtt": "cousine",
+  "cmu": "tinos",
+  "cmuserif": "tinos",
+  "consolas": "cousine",
+  "constantia": "ptserif",
+  "corbel": "opensans",
+  "courier": "cousine",
+  "couriernew": "cousine",
+  "dejavusans": "opensans",
+  "dejavuserif": "ptserif",
+  "din": "barlow",
+  "dinnextltpro": "barlow",
+  "dinpro": "barlow",
+  "franklingothic": "archivo",
+  "franklingothicmedium": "archivo",
+  "freemono": "cousine",
+  "freesans": "arimo",
+  "freeserif": "tinos",
+  "garamond": "ebgaramond",
+  "gentium": "ptserif",
+  "gentiumplus": "ptserif",
+  "georgia": "gelasio",
+  "gillsans": "lato",
+  "gillsansmt": "lato",
+  "gotham": "montserrat",
+  "helvetica": "arimo",
+  "helveticaneue": "inter",
+  "impact": "oswald",
+  "liberationmono": "cousine",
+  "liberationsans": "arimo",
+  "liberationsansnarrow": "arimo",
+  "liberationserif": "tinos",
+  "lmmono": "cousine",
+  "lmroman": "tinos",
+  "lmsans": "arimo",
+  "lucidagrande": "opensans",
+  "lucidasans": "opensans",
+  "menlo": "cousine",
+  "minion": "crimsontext",
+  "minionpro": "crimsontext",
+  "monaco": "cousine",
+  "myriad": "sourcesans3",
+  "myriadpro": "sourcesans3",
+  "nimbusmonl": "cousine",
+  "nimbusmono": "cousine",
+  "nimbusroman": "tinos",
+  "nimbusromanno9l": "tinos",
+  "nimbusromno9l": "tinos",
+  "nimbussanl": "arimo",
+  "nimbussans": "arimo",
+  "palatino": "ebgaramond",
+  "palatinolinotype": "ebgaramond",
+  "proximanova": "figtree",
+  "segoe": "opensans",
+  "segoeui": "opensans",
+  "sfmono": "jetbrainsmono",
+  "sfprodisplay": "inter",
+  "sfprotext": "inter",
+  "sourcesanspro": "sourcesans3",
+  "stix": "tinos",
+  "stixgeneral": "tinos",
+  "stixtwotext": "tinos",
+  "sylfaen": "ptserif",
+  "tahoma": "opensans",
+  "texgyrecursor": "cousine",
+  "texgyreheros": "arimo",
+  "texgyrepagella": "ebgaramond",
+  "texgyretermes": "tinos",
+  "times": "tinos",
+  "timesnewroman": "tinos",
+  "timesroman": "tinos",
+  "trebuchetms": "firasans",
+  "urwpalladio": "ebgaramond",
+  "verdana": "opensans"
+ },
+ "families": {
+  "anton": {
+   "category": "sans",
+   "faces": {
+    "400": "anton-400.ttf"
+   },
+   "name": "Anton"
+  },
+  "archivo": {
+   "category": "sans",
+   "faces": {
+    "300": "archivo-300.ttf",
+    "400": "archivo-400.ttf",
+    "400i": "archivo-400i.ttf",
+    "500": "archivo-500.ttf",
+    "600": "archivo-600.ttf",
+    "700": "archivo-700.ttf",
+    "700i": "archivo-700i.ttf",
+    "800": "archivo-800.ttf",
+    "900": "archivo-900.ttf"
+   },
+   "name": "Archivo"
+  },
+  "arimo": {
+   "category": "sans",
+   "faces": {
+    "400": "arimo-400.ttf",
+    "400i": "arimo-400i.ttf",
+    "500": "arimo-500.ttf",
+    "600": "arimo-600.ttf",
+    "700": "arimo-700.ttf",
+    "700i": "arimo-700i.ttf"
+   },
+   "name": "Arimo"
+  },
+  "barlow": {
+   "category": "sans",
+   "faces": {
+    "300": "barlow-300.ttf",
+    "400": "barlow-400.ttf",
+    "400i": "barlow-400i.ttf",
+    "500": "barlow-500.ttf",
+    "600": "barlow-600.ttf",
+    "700": "barlow-700.ttf",
+    "700i": "barlow-700i.ttf",
+    "800": "barlow-800.ttf",
+    "900": "barlow-900.ttf"
+   },
+   "name": "Barlow"
+  },
+  "bebasneue": {
+   "category": "sans",
+   "faces": {
+    "400": "bebasneue-400.ttf"
+   },
+   "name": "Bebas Neue"
+  },
+  "caladea": {
+   "category": "serif",
+   "faces": {
+    "400": "caladea-400.ttf",
+    "400i": "caladea-400i.ttf",
+    "700": "caladea-700.ttf",
+    "700i": "caladea-700i.ttf"
+   },
+   "name": "Caladea"
+  },
+  "carlito": {
+   "category": "sans",
+   "faces": {
+    "400": "carlito-400.ttf",
+    "400i": "carlito-400i.ttf",
+    "700": "carlito-700.ttf",
+    "700i": "carlito-700i.ttf"
+   },
+   "name": "Carlito"
+  },
+  "cormorantgaramond": {
+   "category": "serif",
+   "faces": {
+    "300": "cormorantgaramond-300.ttf",
+    "400": "cormorantgaramond-400.ttf",
+    "400i": "cormorantgaramond-400i.ttf",
+    "500": "cormorantgaramond-500.ttf",
+    "600": "cormorantgaramond-600.ttf",
+    "700": "cormorantgaramond-700.ttf",
+    "700i": "cormorantgaramond-700i.ttf"
+   },
+   "name": "Cormorant Garamond"
+  },
+  "cousine": {
+   "category": "mono",
+   "faces": {
+    "400": "cousine-400.ttf",
+    "400i": "cousine-400i.ttf",
+    "700": "cousine-700.ttf",
+    "700i": "cousine-700i.ttf"
+   },
+   "name": "Cousine"
+  },
+  "crimsontext": {
+   "category": "serif",
+   "faces": {
+    "400": "crimsontext-400.ttf",
+    "400i": "crimsontext-400i.ttf",
+    "600": "crimsontext-600.ttf",
+    "700": "crimsontext-700.ttf",
+    "700i": "crimsontext-700i.ttf"
+   },
+   "name": "Crimson Text"
+  },
+  "dmsans": {
+   "category": "sans",
+   "faces": {
+    "300": "dmsans-300.ttf",
+    "400": "dmsans-400.ttf",
+    "400i": "dmsans-400i.ttf",
+    "500": "dmsans-500.ttf",
+    "600": "dmsans-600.ttf",
+    "700": "dmsans-700.ttf",
+    "700i": "dmsans-700i.ttf",
+    "800": "dmsans-800.ttf",
+    "900": "dmsans-900.ttf"
+   },
+   "name": "DM Sans"
+  },
+  "ebgaramond": {
+   "category": "serif",
+   "faces": {
+    "400": "ebgaramond-400.ttf",
+    "400i": "ebgaramond-400i.ttf",
+    "500": "ebgaramond-500.ttf",
+    "600": "ebgaramond-600.ttf",
+    "700": "ebgaramond-700.ttf",
+    "700i": "ebgaramond-700i.ttf",
+    "800": "ebgaramond-800.ttf"
+   },
+   "name": "EB Garamond"
+  },
+  "figtree": {
+   "category": "sans",
+   "faces": {
+    "300": "figtree-300.ttf",
+    "400": "figtree-400.ttf",
+    "400i": "figtree-400i.ttf",
+    "500": "figtree-500.ttf",
+    "600": "figtree-600.ttf",
+    "700": "figtree-700.ttf",
+    "700i": "figtree-700i.ttf",
+    "800": "figtree-800.ttf",
+    "900": "figtree-900.ttf"
+   },
+   "name": "Figtree"
+  },
+  "firasans": {
+   "category": "sans",
+   "faces": {
+    "300": "firasans-300.ttf",
+    "400": "firasans-400.ttf",
+    "400i": "firasans-400i.ttf",
+    "500": "firasans-500.ttf",
+    "600": "firasans-600.ttf",
+    "700": "firasans-700.ttf",
+    "700i": "firasans-700i.ttf",
+    "800": "firasans-800.ttf",
+    "900": "firasans-900.ttf"
+   },
+   "name": "Fira Sans"
+  },
+  "gelasio": {
+   "category": "serif",
+   "faces": {
+    "400": "gelasio-400.ttf",
+    "400i": "gelasio-400i.ttf",
+    "500": "gelasio-500.ttf",
+    "600": "gelasio-600.ttf",
+    "700": "gelasio-700.ttf",
+    "700i": "gelasio-700i.ttf"
+   },
+   "name": "Gelasio"
+  },
+  "heebo": {
+   "category": "sans",
+   "faces": {
+    "300": "heebo-300.ttf",
+    "400": "heebo-400.ttf",
+    "500": "heebo-500.ttf",
+    "600": "heebo-600.ttf",
+    "700": "heebo-700.ttf",
+    "800": "heebo-800.ttf",
+    "900": "heebo-900.ttf"
+   },
+   "name": "Heebo"
+  },
+  "ibmplexmono": {
+   "category": "mono",
+   "faces": {
+    "300": "ibmplexmono-300.ttf",
+    "400": "ibmplexmono-400.ttf",
+    "400i": "ibmplexmono-400i.ttf",
+    "500": "ibmplexmono-500.ttf",
+    "600": "ibmplexmono-600.ttf",
+    "700": "ibmplexmono-700.ttf",
+    "700i": "ibmplexmono-700i.ttf"
+   },
+   "name": "IBM Plex Mono"
+  },
+  "inter": {
+   "category": "sans",
+   "faces": {
+    "300": "inter-300.ttf",
+    "400": "inter-400.ttf",
+    "400i": "inter-400i.ttf",
+    "500": "inter-500.ttf",
+    "600": "inter-600.ttf",
+    "700": "inter-700.ttf",
+    "700i": "inter-700i.ttf",
+    "800": "inter-800.ttf",
+    "900": "inter-900.ttf"
+   },
+   "name": "Inter"
+  },
+  "jetbrainsmono": {
+   "category": "mono",
+   "faces": {
+    "300": "jetbrainsmono-300.ttf",
+    "400": "jetbrainsmono-400.ttf",
+    "400i": "jetbrainsmono-400i.ttf",
+    "500": "jetbrainsmono-500.ttf",
+    "600": "jetbrainsmono-600.ttf",
+    "700": "jetbrainsmono-700.ttf",
+    "700i": "jetbrainsmono-700i.ttf",
+    "800": "jetbrainsmono-800.ttf"
+   },
+   "name": "JetBrains Mono"
+  },
+  "josefinsans": {
+   "category": "sans",
+   "faces": {
+    "300": "josefinsans-300.ttf",
+    "400": "josefinsans-400.ttf",
+    "400i": "josefinsans-400i.ttf",
+    "500": "josefinsans-500.ttf",
+    "600": "josefinsans-600.ttf",
+    "700": "josefinsans-700.ttf",
+    "700i": "josefinsans-700i.ttf"
+   },
+   "name": "Josefin Sans"
+  },
+  "kanit": {
+   "category": "sans",
+   "faces": {
+    "300": "kanit-300.ttf",
+    "400": "kanit-400.ttf",
+    "400i": "kanit-400i.ttf",
+    "500": "kanit-500.ttf",
+    "600": "kanit-600.ttf",
+    "700": "kanit-700.ttf",
+    "700i": "kanit-700i.ttf",
+    "800": "kanit-800.ttf",
+    "900": "kanit-900.ttf"
+   },
+   "name": "Kanit"
+  },
+  "karla": {
+   "category": "sans",
+   "faces": {
+    "300": "karla-300.ttf",
+    "400": "karla-400.ttf",
+    "400i": "karla-400i.ttf",
+    "500": "karla-500.ttf",
+    "600": "karla-600.ttf",
+    "700": "karla-700.ttf",
+    "700i": "karla-700i.ttf",
+    "800": "karla-800.ttf"
+   },
+   "name": "Karla"
+  },
+  "lato": {
+   "category": "sans",
+   "faces": {
+    "300": "lato-300.ttf",
+    "400": "lato-400.ttf",
+    "400i": "lato-400i.ttf",
+    "700": "lato-700.ttf",
+    "700i": "lato-700i.ttf",
+    "900": "lato-900.ttf"
+   },
+   "name": "Lato"
+  },
+  "leaguespartan": {
+   "category": "sans",
+   "faces": {
+    "300": "leaguespartan-300.ttf",
+    "400": "leaguespartan-400.ttf",
+    "500": "leaguespartan-500.ttf",
+    "600": "leaguespartan-600.ttf",
+    "700": "leaguespartan-700.ttf",
+    "800": "leaguespartan-800.ttf",
+    "900": "leaguespartan-900.ttf"
+   },
+   "name": "League Spartan"
+  },
+  "lexend": {
+   "category": "sans",
+   "faces": {
+    "300": "lexend-300.ttf",
+    "400": "lexend-400.ttf",
+    "500": "lexend-500.ttf",
+    "600": "lexend-600.ttf",
+    "700": "lexend-700.ttf",
+    "800": "lexend-800.ttf",
+    "900": "lexend-900.ttf"
+   },
+   "name": "Lexend"
+  },
+  "librebaskerville": {
+   "category": "serif",
+   "faces": {
+    "400": "librebaskerville-400.ttf",
+    "400i": "librebaskerville-400i.ttf",
+    "500": "librebaskerville-500.ttf",
+    "600": "librebaskerville-600.ttf",
+    "700": "librebaskerville-700.ttf",
+    "700i": "librebaskerville-700i.ttf"
+   },
+   "name": "Libre Baskerville"
+  },
+  "lora": {
+   "category": "serif",
+   "faces": {
+    "400": "lora-400.ttf",
+    "400i": "lora-400i.ttf",
+    "500": "lora-500.ttf",
+    "600": "lora-600.ttf",
+    "700": "lora-700.ttf",
+    "700i": "lora-700i.ttf"
+   },
+   "name": "Lora"
+  },
+  "manrope": {
+   "category": "sans",
+   "faces": {
+    "300": "manrope-300.ttf",
+    "400": "manrope-400.ttf",
+    "500": "manrope-500.ttf",
+    "600": "manrope-600.ttf",
+    "700": "manrope-700.ttf",
+    "800": "manrope-800.ttf"
+   },
+   "name": "Manrope"
+  },
+  "merriweather": {
+   "category": "serif",
+   "faces": {
+    "300": "merriweather-300.ttf",
+    "400": "merriweather-400.ttf",
+    "400i": "merriweather-400i.ttf",
+    "500": "merriweather-500.ttf",
+    "600": "merriweather-600.ttf",
+    "700": "merriweather-700.ttf",
+    "700i": "merriweather-700i.ttf",
+    "800": "merriweather-800.ttf",
+    "900": "merriweather-900.ttf"
+   },
+   "name": "Merriweather"
+  },
+  "montserrat": {
+   "category": "sans",
+   "faces": {
+    "300": "montserrat-300.ttf",
+    "400": "montserrat-400.ttf",
+    "400i": "montserrat-400i.ttf",
+    "500": "montserrat-500.ttf",
+    "600": "montserrat-600.ttf",
+    "700": "montserrat-700.ttf",
+    "700i": "montserrat-700i.ttf",
+    "800": "montserrat-800.ttf",
+    "900": "montserrat-900.ttf"
+   },
+   "name": "Montserrat"
+  },
+  "mulish": {
+   "category": "sans",
+   "faces": {
+    "300": "mulish-300.ttf",
+    "400": "mulish-400.ttf",
+    "400i": "mulish-400i.ttf",
+    "500": "mulish-500.ttf",
+    "600": "mulish-600.ttf",
+    "700": "mulish-700.ttf",
+    "700i": "mulish-700i.ttf",
+    "800": "mulish-800.ttf",
+    "900": "mulish-900.ttf"
+   },
+   "name": "Mulish"
+  },
+  "notosans": {
+   "category": "sans",
+   "faces": {
+    "300": "notosans-300.ttf",
+    "400": "notosans-400.ttf",
+    "400i": "notosans-400i.ttf",
+    "500": "notosans-500.ttf",
+    "600": "notosans-600.ttf",
+    "700": "notosans-700.ttf",
+    "700i": "notosans-700i.ttf",
+    "800": "notosans-800.ttf",
+    "900": "notosans-900.ttf"
+   },
+   "name": "Noto Sans"
+  },
+  "notoserif": {
+   "category": "serif",
+   "faces": {
+    "300": "notoserif-300.ttf",
+    "400": "notoserif-400.ttf",
+    "400i": "notoserif-400i.ttf",
+    "500": "notoserif-500.ttf",
+    "600": "notoserif-600.ttf",
+    "700": "notoserif-700.ttf",
+    "700i": "notoserif-700i.ttf",
+    "800": "notoserif-800.ttf",
+    "900": "notoserif-900.ttf"
+   },
+   "name": "Noto Serif"
+  },
+  "nunito": {
+   "category": "sans",
+   "faces": {
+    "300": "nunito-300.ttf",
+    "400": "nunito-400.ttf",
+    "400i": "nunito-400i.ttf",
+    "500": "nunito-500.ttf",
+    "600": "nunito-600.ttf",
+    "700": "nunito-700.ttf",
+    "700i": "nunito-700i.ttf",
+    "800": "nunito-800.ttf",
+    "900": "nunito-900.ttf"
+   },
+   "name": "Nunito"
+  },
+  "nunitosans": {
+   "category": "sans",
+   "faces": {
+    "300": "nunitosans-300.ttf",
+    "400": "nunitosans-400.ttf",
+    "400i": "nunitosans-400i.ttf",
+    "500": "nunitosans-500.ttf",
+    "600": "nunitosans-600.ttf",
+    "700": "nunitosans-700.ttf",
+    "700i": "nunitosans-700i.ttf",
+    "800": "nunitosans-800.ttf",
+    "900": "nunitosans-900.ttf"
+   },
+   "name": "Nunito Sans"
+  },
+  "opensans": {
+   "category": "sans",
+   "faces": {
+    "300": "opensans-300.ttf",
+    "400": "opensans-400.ttf",
+    "400i": "opensans-400i.ttf",
+    "500": "opensans-500.ttf",
+    "600": "opensans-600.ttf",
+    "700": "opensans-700.ttf",
+    "700i": "opensans-700i.ttf",
+    "800": "opensans-800.ttf"
+   },
+   "name": "Open Sans"
+  },
+  "oswald": {
+   "category": "sans",
+   "faces": {
+    "300": "oswald-300.ttf",
+    "400": "oswald-400.ttf",
+    "500": "oswald-500.ttf",
+    "600": "oswald-600.ttf",
+    "700": "oswald-700.ttf"
+   },
+   "name": "Oswald"
+  },
+  "outfit": {
+   "category": "sans",
+   "faces": {
+    "300": "outfit-300.ttf",
+    "400": "outfit-400.ttf",
+    "500": "outfit-500.ttf",
+    "600": "outfit-600.ttf",
+    "700": "outfit-700.ttf",
+    "800": "outfit-800.ttf",
+    "900": "outfit-900.ttf"
+   },
+   "name": "Outfit"
+  },
+  "playfairdisplay": {
+   "category": "serif",
+   "faces": {
+    "400": "playfairdisplay-400.ttf",
+    "400i": "playfairdisplay-400i.ttf",
+    "500": "playfairdisplay-500.ttf",
+    "600": "playfairdisplay-600.ttf",
+    "700": "playfairdisplay-700.ttf",
+    "700i": "playfairdisplay-700i.ttf",
+    "800": "playfairdisplay-800.ttf",
+    "900": "playfairdisplay-900.ttf"
+   },
+   "name": "Playfair Display"
+  },
+  "plusjakartasans": {
+   "category": "sans",
+   "faces": {
+    "300": "plusjakartasans-300.ttf",
+    "400": "plusjakartasans-400.ttf",
+    "400i": "plusjakartasans-400i.ttf",
+    "500": "plusjakartasans-500.ttf",
+    "600": "plusjakartasans-600.ttf",
+    "700": "plusjakartasans-700.ttf",
+    "700i": "plusjakartasans-700i.ttf",
+    "800": "plusjakartasans-800.ttf"
+   },
+   "name": "Plus Jakarta Sans"
+  },
+  "poppins": {
+   "category": "sans",
+   "faces": {
+    "300": "poppins-300.ttf",
+    "400": "poppins-400.ttf",
+    "400i": "poppins-400i.ttf",
+    "500": "poppins-500.ttf",
+    "600": "poppins-600.ttf",
+    "700": "poppins-700.ttf",
+    "700i": "poppins-700i.ttf",
+    "800": "poppins-800.ttf",
+    "900": "poppins-900.ttf"
+   },
+   "name": "Poppins"
+  },
+  "ptsans": {
+   "category": "sans",
+   "faces": {
+    "400": "ptsans-400.ttf",
+    "400i": "ptsans-400i.ttf",
+    "700": "ptsans-700.ttf",
+    "700i": "ptsans-700i.ttf"
+   },
+   "name": "PT Sans"
+  },
+  "ptserif": {
+   "category": "serif",
+   "faces": {
+    "400": "ptserif-400.ttf",
+    "400i": "ptserif-400i.ttf",
+    "700": "ptserif-700.ttf",
+    "700i": "ptserif-700i.ttf"
+   },
+   "name": "PT Serif"
+  },
+  "quicksand": {
+   "category": "sans",
+   "faces": {
+    "300": "quicksand-300.ttf",
+    "400": "quicksand-400.ttf",
+    "500": "quicksand-500.ttf",
+    "600": "quicksand-600.ttf",
+    "700": "quicksand-700.ttf"
+   },
+   "name": "Quicksand"
+  },
+  "raleway": {
+   "category": "sans",
+   "faces": {
+    "300": "raleway-300.ttf",
+    "400": "raleway-400.ttf",
+    "400i": "raleway-400i.ttf",
+    "500": "raleway-500.ttf",
+    "600": "raleway-600.ttf",
+    "700": "raleway-700.ttf",
+    "700i": "raleway-700i.ttf",
+    "800": "raleway-800.ttf",
+    "900": "raleway-900.ttf"
+   },
+   "name": "Raleway"
+  },
+  "roboto": {
+   "category": "sans",
+   "faces": {
+    "300": "roboto-300.ttf",
+    "400": "roboto-400.ttf",
+    "400i": "roboto-400i.ttf",
+    "500": "roboto-500.ttf",
+    "600": "roboto-600.ttf",
+    "700": "roboto-700.ttf",
+    "700i": "roboto-700i.ttf",
+    "800": "roboto-800.ttf",
+    "900": "roboto-900.ttf"
+   },
+   "name": "Roboto"
+  },
+  "robotocondensed": {
+   "category": "sans",
+   "faces": {
+    "300": "robotocondensed-300.ttf",
+    "400": "robotocondensed-400.ttf",
+    "400i": "robotocondensed-400i.ttf",
+    "500": "robotocondensed-500.ttf",
+    "600": "robotocondensed-600.ttf",
+    "700": "robotocondensed-700.ttf",
+    "700i": "robotocondensed-700i.ttf",
+    "800": "robotocondensed-800.ttf",
+    "900": "robotocondensed-900.ttf"
+   },
+   "name": "Roboto Condensed"
+  },
+  "robotomono": {
+   "category": "mono",
+   "faces": {
+    "300": "robotomono-300.ttf",
+    "400": "robotomono-400.ttf",
+    "400i": "robotomono-400i.ttf",
+    "500": "robotomono-500.ttf",
+    "600": "robotomono-600.ttf",
+    "700": "robotomono-700.ttf",
+    "700i": "robotomono-700i.ttf"
+   },
+   "name": "Roboto Mono"
+  },
+  "robotoslab": {
+   "category": "serif",
+   "faces": {
+    "300": "robotoslab-300.ttf",
+    "400": "robotoslab-400.ttf",
+    "500": "robotoslab-500.ttf",
+    "600": "robotoslab-600.ttf",
+    "700": "robotoslab-700.ttf",
+    "800": "robotoslab-800.ttf",
+    "900": "robotoslab-900.ttf"
+   },
+   "name": "Roboto Slab"
+  },
+  "rubik": {
+   "category": "sans",
+   "faces": {
+    "300": "rubik-300.ttf",
+    "400": "rubik-400.ttf",
+    "400i": "rubik-400i.ttf",
+    "500": "rubik-500.ttf",
+    "600": "rubik-600.ttf",
+    "700": "rubik-700.ttf",
+    "700i": "rubik-700i.ttf",
+    "800": "rubik-800.ttf",
+    "900": "rubik-900.ttf"
+   },
+   "name": "Rubik"
+  },
+  "sourcecodepro": {
+   "category": "mono",
+   "faces": {
+    "300": "sourcecodepro-300.ttf",
+    "400": "sourcecodepro-400.ttf",
+    "400i": "sourcecodepro-400i.ttf",
+    "500": "sourcecodepro-500.ttf",
+    "600": "sourcecodepro-600.ttf",
+    "700": "sourcecodepro-700.ttf",
+    "700i": "sourcecodepro-700i.ttf",
+    "800": "sourcecodepro-800.ttf",
+    "900": "sourcecodepro-900.ttf"
+   },
+   "name": "Source Code Pro"
+  },
+  "sourcesans3": {
+   "category": "sans",
+   "faces": {
+    "300": "sourcesans3-300.ttf",
+    "400": "sourcesans3-400.ttf",
+    "400i": "sourcesans3-400i.ttf",
+    "500": "sourcesans3-500.ttf",
+    "600": "sourcesans3-600.ttf",
+    "700": "sourcesans3-700.ttf",
+    "700i": "sourcesans3-700i.ttf",
+    "800": "sourcesans3-800.ttf",
+    "900": "sourcesans3-900.ttf"
+   },
+   "name": "Source Sans 3"
+  },
+  "tinos": {
+   "category": "serif",
+   "faces": {
+    "400": "tinos-400.ttf",
+    "400i": "tinos-400i.ttf",
+    "700": "tinos-700.ttf",
+    "700i": "tinos-700i.ttf"
+   },
+   "name": "Tinos"
+  },
+  "titilliumweb": {
+   "category": "sans",
+   "faces": {
+    "300": "titilliumweb-300.ttf",
+    "400": "titilliumweb-400.ttf",
+    "400i": "titilliumweb-400i.ttf",
+    "600": "titilliumweb-600.ttf",
+    "700": "titilliumweb-700.ttf",
+    "700i": "titilliumweb-700i.ttf",
+    "900": "titilliumweb-900.ttf"
+   },
+   "name": "Titillium Web"
+  },
+  "ubuntu": {
+   "category": "sans",
+   "faces": {
+    "300": "ubuntu-300.ttf",
+    "400": "ubuntu-400.ttf",
+    "400i": "ubuntu-400i.ttf",
+    "500": "ubuntu-500.ttf",
+    "700": "ubuntu-700.ttf",
+    "700i": "ubuntu-700i.ttf"
+   },
+   "name": "Ubuntu"
+  },
+  "worksans": {
+   "category": "sans",
+   "faces": {
+    "300": "worksans-300.ttf",
+    "400": "worksans-400.ttf",
+    "400i": "worksans-400i.ttf",
+    "500": "worksans-500.ttf",
+    "600": "worksans-600.ttf",
+    "700": "worksans-700.ttf",
+    "700i": "worksans-700i.ttf",
+    "800": "worksans-800.ttf",
+    "900": "worksans-900.ttf"
+   },
+   "name": "Work Sans"
+  }
+ },
+ "universal": {
+  "mono": {
+   "400": "universal-mono-400.ttf",
+   "700": "universal-mono-700.ttf"
+  },
+  "sans": {
+   "400": "universal-sans-400.ttf",
+   "400i": "universal-sans-400i.ttf",
+   "700": "universal-sans-700.ttf",
+   "700i": "universal-sans-700i.ttf"
+  },
+  "serif": {
+   "400": "universal-serif-400.ttf",
+   "400i": "universal-serif-400i.ttf",
+   "700": "universal-serif-700.ttf",
+   "700i": "universal-serif-700i.ttf"
+  }
+ },
+ "version": 1
+}

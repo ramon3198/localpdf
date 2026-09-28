@@ -1,0 +1,9 @@
+* text=auto eol=lf
+# cmd.exe needs CRLF line endings in batch files (labels and goto break with LF).
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
+*.mp4 binary
+*.ttf binary
+*.woff2 binary
