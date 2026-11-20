@@ -15,31 +15,33 @@ const PROMISES = [
     { icon: Lock01, title: "Sin registro", text: "Abre una herramienta y úsala. Sin cuentas." },
 ];
 
+/** A row, not a tile: icon beside the text, so the whole catalogue fits in a screen or two. */
 const ToolCard = ({ tool }: { tool: Tool }) => (
     <Link
         href={`/tools/${tool.slug}`}
         className={cx(
-            "group relative flex h-full flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-secondary outline-focus-ring transition duration-150 ease-out ring-inset hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2",
+            "group relative flex h-full items-start gap-3 rounded-xl bg-primary p-3.5 ring-1 ring-secondary outline-focus-ring transition duration-150 ease-out ring-inset hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2",
             !tool.available && "bg-secondary_subtle",
         )}
     >
-        <div className="flex items-start justify-between gap-3">
-            <FeaturedIcon icon={tool.icon} color={tool.color} theme="modern" size="lg" />
-            {!tool.available ? (
-                <Badge color="gray" type="pill-color" size="sm">
-                    Próximamente
-                </Badge>
-            ) : (
-                <ArrowRight
-                    aria-hidden="true"
-                    className="size-5 text-fg-quaternary transition duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-fg-brand-primary"
-                />
-            )}
-        </div>
-        <div className="flex flex-col gap-1">
-            <h3 className="text-md font-semibold text-primary">{tool.title}</h3>
+        <FeaturedIcon icon={tool.icon} color={tool.color} theme="modern" size="md" className="shrink-0" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-primary">
+                {tool.title}
+                {!tool.available && (
+                    <Badge color="gray" type="pill-color" size="sm">
+                        Próximamente
+                    </Badge>
+                )}
+            </h3>
             <p className="text-sm text-tertiary">{tool.description}</p>
         </div>
+        {tool.available && (
+            <ArrowRight
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-fg-quaternary opacity-0 transition duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-fg-brand-primary group-hover:opacity-100"
+            />
+        )}
     </Link>
 );
 
@@ -60,7 +62,7 @@ const DemoVideo = ({ className }: { className?: string }) => (
 );
 
 const ToolGrid = ({ items }: { items: Tool[] }) => (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
         {items.map((tool) => (
             <ToolCard key={tool.slug} tool={tool} />
         ))}
@@ -76,62 +78,67 @@ export const HomeScreen = () => {
 
     return (
         <div className="flex flex-col">
-            <section className="border-b border-secondary bg-primary px-4 pt-8 pb-8 md:px-6 lg:px-10 lg:pt-12 lg:pb-10">
-                <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-                    <div className="flex flex-col items-start gap-5">
-                        <Badge color="brand" type="pill-color" size="md">
+            {/* Kept short: the tools are what people came for, and they start right below. */}
+            <section className="border-b border-secondary bg-primary px-4 py-6 md:px-6 lg:px-10 lg:py-8">
+                <div className="mx-auto flex max-w-6xl flex-col gap-5">
+                    <div className="flex flex-col items-start gap-2">
+                        <Badge color="brand" type="pill-color" size="sm">
                             <span className="inline-flex items-center gap-1.5">
                                 <ShieldTick aria-hidden="true" className="size-3.5" />
                                 100% local · sin subir archivos
                             </span>
                         </Badge>
-                        <div className="flex flex-col gap-3">
-                            <h1 className="text-display-sm font-semibold tracking-tight text-primary md:text-display-md">
-                                ¿Qué quieres hacer con tu <span className="text-fg-brand-primary">PDF</span>?
-                            </h1>
-                            <p className="max-w-2xl text-lg text-tertiary">
-                                Une, divide, comprime, convierte, edita y firma documentos directamente en tu navegador. Nada sale de tu equipo.
-                            </p>
-                        </div>
+                        <h1 className="text-display-xs font-semibold tracking-tight text-primary md:text-display-sm">
+                            ¿Qué quieres hacer con tu <span className="text-fg-brand-primary">PDF</span>?
+                        </h1>
+                        <p className="max-w-2xl text-md text-tertiary">
+                            Une, divide, comprime, convierte, edita y firma en tu navegador. Nada sale de tu equipo.
+                        </p>
+                    </div>
 
-                        <div className="flex w-full max-w-2xl flex-col gap-3">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                        <div className="w-full lg:max-w-sm">
                             <Input
                                 size="md"
                                 aria-label="Buscar herramienta"
-                                placeholder="Busca una herramienta: unir, firmar, contraseña…"
+                                placeholder="Busca: unir, firmar, contraseña…"
                                 icon={SearchLg}
                                 value={query}
                                 onChange={setQuery}
                                 onKeyDown={(event) => event.key === "Escape" && setQuery("")}
                             />
-                            <div role="group" aria-label="Filtrar por categoría" className="flex flex-wrap gap-2">
-                                {[null, ...(Object.keys(categories) as ToolCategory[])].map((c) => {
-                                    const active = category === c;
-                                    return (
-                                        <button
-                                            key={c ?? "all"}
-                                            type="button"
-                                            aria-pressed={active}
-                                            onClick={() => setCategory(c)}
-                                            className={cx(
-                                                "rounded-full px-3 py-1.5 text-sm font-semibold ring-1 outline-focus-ring transition duration-100 ease-linear ring-inset focus-visible:outline-2 focus-visible:outline-offset-2",
-                                                active
-                                                    ? "bg-brand-solid text-white ring-transparent hover:bg-brand-solid_hover"
-                                                    : "bg-primary text-secondary ring-primary hover:bg-primary_hover",
-                                            )}
-                                        >
-                                            {c ? categories[c].label : "Todas"}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                        </div>
+                        {/* One line on phones too: it scrolls sideways instead of taking a second row. */}
+                        <div
+                            role="group"
+                            aria-label="Filtrar por categoría"
+                            className="-mx-4 scrollbar-hide flex gap-2 overflow-x-auto px-4 py-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+                        >
+                            {[null, ...(Object.keys(categories) as ToolCategory[])].map((c) => {
+                                const active = category === c;
+                                return (
+                                    <button
+                                        key={c ?? "all"}
+                                        type="button"
+                                        aria-pressed={active}
+                                        onClick={() => setCategory(c)}
+                                        className={cx(
+                                            "min-h-10 shrink-0 rounded-full px-3.5 text-sm font-semibold ring-1 outline-focus-ring transition duration-100 ease-linear ring-inset focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-9",
+                                            active
+                                                ? "bg-brand-solid text-white ring-transparent hover:bg-brand-solid_hover"
+                                                : "bg-primary text-secondary ring-primary hover:bg-primary_hover",
+                                        )}
+                                    >
+                                        {c ? categories[c].label : "Todas"}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
-                    <DemoVideo className="hidden lg:flex" />
                 </div>
             </section>
 
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-8 md:px-6 lg:px-10 lg:py-10">
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 md:px-6 lg:px-10 lg:py-8">
                 {searching ? (
                     matches.length ? (
                         <section className="flex flex-col gap-4" aria-live="polite">
@@ -152,12 +159,10 @@ export const HomeScreen = () => {
                     )
                 ) : (
                     shownCategories.map((c) => (
-                        <section key={c} className="flex flex-col gap-4">
-                            <div className="flex items-baseline justify-between gap-4">
-                                <div>
-                                    <h2 className="text-xl font-semibold text-primary">{categories[c].label}</h2>
-                                    <p className="text-sm text-tertiary">{categories[c].description}</p>
-                                </div>
+                        <section key={c} className="flex flex-col gap-3">
+                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                                <h2 className="text-lg font-semibold text-primary">{categories[c].label}</h2>
+                                <p className="text-sm text-tertiary">{categories[c].description}</p>
                             </div>
                             <ToolGrid items={toolsByCategory(c)} />
                         </section>
@@ -165,9 +170,9 @@ export const HomeScreen = () => {
                 )}
 
                 {!searching && (
-                    <section className="flex flex-col gap-4 lg:hidden">
-                        <h2 className="text-xl font-semibold text-primary">Míralo en acción</h2>
-                        <DemoVideo />
+                    <section className="flex flex-col gap-3 border-t border-secondary pt-8">
+                        <h2 className="text-lg font-semibold text-primary">Míralo en acción</h2>
+                        <DemoVideo className="max-w-2xl" />
                     </section>
                 )}
 
