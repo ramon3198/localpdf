@@ -35,11 +35,34 @@ export const ToolPageLayout = ({
 }) => (
     <>
         <PageHeader title={title} description={description} actions={<LocalBadge />} />
-        <div className={cx("mx-auto flex w-full flex-col gap-6 px-4 py-6 md:px-6 md:py-8 lg:px-10", width === "wide" ? "max-w-7xl" : "max-w-4xl")}>
+        <div className={cx("group/tool mx-auto flex w-full flex-col gap-6 px-4 py-6 md:px-6 md:py-8 lg:px-10", width === "wide" ? "max-w-7xl" : "max-w-4xl")}>
             {children}
+            <ToolIntro />
         </div>
     </>
 );
+
+/**
+ * What the tool offers, shown only while its drop zone is on screen (nothing open yet): the options appear after a
+ * file is chosen, and people want to know what they will get before handing one over.
+ */
+const ToolIntro = () => {
+    const tool = getTool(toolSlugFromPath(usePathname()) ?? "");
+    if (!tool?.intro?.length) return null;
+    return (
+        <section aria-label={`Qué puedes hacer con ${tool.title}`} className="hidden grid-cols-1 gap-3 group-has-[[data-dropzone]]/tool:grid sm:grid-cols-3">
+            {tool.intro.map((point) => (
+                <div key={point.title} className="flex items-start gap-2.5 rounded-xl bg-primary p-3.5 ring-1 ring-secondary ring-inset">
+                    <CheckCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-fg-success-secondary" />
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                        <p className="text-sm font-semibold text-primary">{point.title}</p>
+                        <p className="text-sm text-tertiary">{point.text}</p>
+                    </div>
+                </div>
+            ))}
+        </section>
+    );
+};
 
 export const ErrorBanner = ({ message }: { message: string | null }) => (
     <AnimatePresence>
