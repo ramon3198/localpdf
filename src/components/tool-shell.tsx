@@ -1,12 +1,15 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle, DownloadCloud02, File06, InfoCircle, RefreshCcw01, XCircle } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, DownloadCloud02, File06, InfoCircle, RefreshCcw01, XCircle } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
+import { usePathname, useRouter } from "next/navigation";
 import { LocalBadge, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { downloadBlob, readableBytes } from "@/lib/pdf-utils";
+import { nextToolSlugs, sendToTool, toolSlugFromPath } from "@/lib/tool-handoff";
+import { type Tool, getTool } from "@/lib/tools";
 import { cx } from "@/utils/cx";
 
 export type ToolResult = {
@@ -88,12 +91,58 @@ export const Notice = ({
     );
 };
 
+/** How many next tools show before "Más herramientas". */
+const NEXT_TOOLS_SHOWN = 4;
+
+/** "Continuar con…": opens the result in another tool, with no download and upload in between. */
+const NextTools = ({ result }: { result: ToolResult }) => {
+    const router = useRouter();
+    const pathname = usePathname();
+    const [showAll, setShowAll] = useState(false);
+
+    const all = nextToolSlugs(toolSlugFromPath(pathname))
+        .map(getTool)
+        .filter((tool): tool is Tool => !!tool?.available);
+    if (!all.length) return null;
+    const shown = showAll ? all : all.slice(0, NEXT_TOOLS_SHOWN);
+
+    const open = (slug: string) => {
+        sendToTool(slug, result.blob, result.filename);
+        router.push(`/tools/${slug}`);
+    };
+
+    return (
+        <div className="flex w-full flex-col items-center gap-3 border-t border-secondary pt-5">
+            <p className="text-sm font-medium text-secondary">Continuar con este PDF</p>
+            <div className="flex flex-wrap justify-center gap-2">
+                {shown.map((tool) => (
+                    <Button key={tool.slug} color="secondary" size="sm" iconLeading={tool.icon} onClick={() => open(tool.slug)}>
+                        {tool.title}
+                    </Button>
+                ))}
+                {all.length > NEXT_TOOLS_SHOWN && (
+                    <Button
+                        color="tertiary"
+                        size="sm"
+                        iconTrailing={showAll ? ChevronUp : ChevronDown}
+                        aria-expanded={showAll}
+                        onClick={() => setShowAll((value) => !value)}
+                    >
+                        {showAll ? "Menos herramientas" : "Más herramientas"}
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export const SuccessPanel = ({
     result,
     onReset,
     onBack,
     backLabel = "Volver y ajustar",
     title = "¡PDF listo!",
+    offersNextTools = true,
 }: {
     result: ToolResult;
     onReset: () => void;
@@ -101,6 +150,8 @@ export const SuccessPanel = ({
     onBack?: () => void;
     backLabel?: string;
     title?: string;
+    /** False when the result can't be opened by the other tools (a PDF that now needs a password). */
+    offersNextTools?: boolean;
 }) => (
     <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -129,6 +180,7 @@ export const SuccessPanel = ({
                 Empezar de nuevo
             </Button>
         </div>
+        {offersNextTools && /\.pdf$/i.test(result.filename) && <NextTools result={result} />}
     </motion.div>
 );
 

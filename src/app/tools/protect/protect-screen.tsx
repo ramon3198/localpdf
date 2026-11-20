@@ -183,7 +183,7 @@ export const ProtectScreen = () => {
         const restrictionsText = [restrictPrint && "imprimir", restrictCopy && "copiar el texto"].filter(Boolean).join(" ni ");
         return (
             <ToolPageLayout title={TITLE} description={DESCRIPTION}>
-                <SuccessPanel result={result} onReset={reset} onBack={() => setResult(null)} backLabel="Volver y cambiar" />
+                <SuccessPanel result={result} onReset={reset} onBack={() => setResult(null)} backLabel="Volver y cambiar" offersNextTools={false} />
                 <Notice tone="warning" title="Guarda la contraseña en un lugar seguro">
                     Si la olvidas, no hay forma de recuperarla ni de abrir el documento.
                     {restrictionsText && ` Además, los lectores de PDF no dejarán ${restrictionsText}, aunque se abra con la contraseña.`}

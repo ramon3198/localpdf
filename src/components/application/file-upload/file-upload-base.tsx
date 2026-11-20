@@ -1,9 +1,11 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { UploadCloud02 } from "@untitledui/icons";
+import { usePathname } from "next/navigation";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { readableBytes } from "@/lib/pdf-utils";
+import { takeHandoff, toolSlugFromPath } from "@/lib/tool-handoff";
 import { cx } from "@/utils/cx";
 
 /**
@@ -172,6 +174,22 @@ export const FileUploadDropZone = ({
         setIsDraggingOver(false);
         processFiles(Array.from(event.dataTransfer.files));
     };
+
+    // A PDF sent from another tool's result screen ("Continuar con…") opens as if it had been dropped here.
+    const pathname = usePathname();
+    const processFilesRef = useRef(processFiles);
+    processFilesRef.current = processFiles;
+    useEffect(() => {
+        // After the mount settles: screens cancel the file they are reading when they unmount, and React's development
+        // double mount would cancel this one too.
+        const timer = setTimeout(() => {
+            const file = takeHandoff(toolSlugFromPath(pathname));
+            if (file) processFilesRef.current([file]);
+        }, 0);
+        return () => clearTimeout(timer);
+        // Only on arrival: the file is taken once.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleInputFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         processFiles(Array.from(event.target.files || []));
