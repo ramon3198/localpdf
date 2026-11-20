@@ -69,8 +69,9 @@ export const applyTextEdits = async (doc: PDFDocument, edits: DocTextEdit[], opt
                 idxs.map((i) => ({ target: edits[i].target, newText: edits[i].newText, style: edits[i].style })),
                 { allowInvisible: opts.allowInvisible },
             );
-            idxs.forEach((i, k) => (results[i] = res[k]));
+            // Written first: if it fails, the edits were not applied and must not be reported as done.
             editor.commit();
+            idxs.forEach((i, k) => (results[i] = res[k]));
         } catch (err) {
             for (const i of idxs) results[i] ??= { ok: false, reason: err instanceof Error ? err.message : String(err) };
         }

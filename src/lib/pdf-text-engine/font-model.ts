@@ -460,15 +460,25 @@ export class FontModel implements DecodingFont {
     private buildReverse(): Map<string, number> {
         if (this.reverse) return this.reverse;
         const m = new Map<string, number>();
+        const byEncoding = (code: number) => (this.kind !== "type0" && this.encoding ? glyphNameToUnicode(this.encoding[code]) : null);
         const consider = (u: string | null | undefined, code: number) => {
             if (!u) return;
             const prev = m.get(u);
-            // Prefer codes actually used in the document (guaranteed to render).
-            if (prev === undefined || (!this.usedCodes.has(prev) && this.usedCodes.has(code))) m.set(u, code);
+            if (prev === undefined) {
+                m.set(u, code);
+                return;
+            }
+            // Prefer codes actually used in the document (guaranteed to render); between equals, the code whose
+            // glyph is this character by name rather than an alternate form mapped to it (a swash, a small cap).
+            const used = this.usedCodes.has(code);
+            const prevUsed = this.usedCodes.has(prev);
+            if ((used && !prevUsed) || (used === prevUsed && byEncoding(code) === u && byEncoding(prev) !== u)) m.set(u, code);
         };
         if (this.toUnicode) for (const [code, u] of this.toUnicode) consider(u, code);
         if (this.kind !== "type0" && this.encoding) {
-            for (let code = 0; code < 256; code++) consider(glyphNameToUnicode(this.encoding[code]), code);
+            // ToUnicode says what a code means (§9.10.2): where it speaks, the glyph name must not add a second
+            // meaning. Subset fonts number glyphs in order of use, and code 0x23 can be "J", not "#".
+            for (let code = 0; code < 256; code++) if (!this.toUnicode?.has(code)) consider(byEncoding(code), code);
         }
         this.reverse = m;
         return m;
