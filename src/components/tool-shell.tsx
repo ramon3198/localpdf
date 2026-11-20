@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LocalBadge, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { ResultPreview, canPreview } from "@/components/result-preview";
 import { downloadBlob, readableBytes } from "@/lib/pdf-utils";
 import { nextToolSlugs, sendToTool, toolSlugFromPath } from "@/lib/tool-handoff";
 import { type Tool, getTool } from "@/lib/tools";
@@ -143,6 +144,7 @@ export const SuccessPanel = ({
     backLabel = "Volver y ajustar",
     title = "¡PDF listo!",
     offersNextTools = true,
+    original,
 }: {
     result: ToolResult;
     onReset: () => void;
@@ -150,39 +152,67 @@ export const SuccessPanel = ({
     onBack?: () => void;
     backLabel?: string;
     title?: string;
-    /** False when the result can't be opened by the other tools (a PDF that now needs a password). */
+    /** False when the result is a PDF that now needs a password: the other tools can't open it, nor can the preview. */
     offersNextTools?: boolean;
-}) => (
-    <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center gap-5 rounded-2xl bg-primary p-6 ring-1 ring-secondary ring-inset md:p-8"
-    >
-        <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
-        <div className="flex flex-col items-center gap-1 text-center">
-            <h2 className="text-lg font-semibold text-primary">{title}</h2>
-            <p className="text-sm text-tertiary">{result.summary ?? readableBytes(result.blob.size)}</p>
-        </div>
-        <div className="flex max-w-full items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-secondary ring-1 ring-secondary ring-inset">
-            <File06 aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
-            <span className="truncate">{result.filename}</span>
-        </div>
-        <div className="flex w-full flex-col items-stretch justify-center gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <Button color="primary" size="lg" iconLeading={DownloadCloud02} onClick={() => downloadBlob(result.blob, result.filename)}>
-                {result.primaryLabel ?? "Descargar"}
-            </Button>
-            {onBack && (
-                <Button color="secondary" size="lg" iconLeading={ArrowLeft} onClick={onBack}>
-                    {backLabel}
-                </Button>
-            )}
-            <Button color={onBack ? "tertiary" : "secondary"} size="lg" iconLeading={RefreshCcw01} onClick={onReset}>
-                Empezar de nuevo
-            </Button>
-        </div>
-        {offersNextTools && /\.pdf$/i.test(result.filename) && <NextTools result={result} />}
-    </motion.div>
-);
+    /** The file before the tool changed it, when comparing both is what the person needs (compression). */
+    original?: Blob;
+}) => {
+    const [largePreview, setLargePreview] = useState(false);
+    const hasPreview = offersNextTools && canPreview(result.filename, result.blob.size);
+    // Beside the preview on wide screens; a large preview takes the whole width and everything else goes below it.
+    const beside = hasPreview && !largePreview;
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center gap-5 rounded-2xl bg-primary p-6 ring-1 ring-secondary ring-inset md:p-8"
+        >
+            <div className={cx("flex w-full flex-col items-center gap-5", beside && "md:flex-row md:items-start md:gap-8")}>
+                {hasPreview && (
+                    <ResultPreview
+                        blob={result.blob}
+                        filename={result.filename}
+                        original={original}
+                        large={largePreview}
+                        onToggleLarge={() => setLargePreview((value) => !value)}
+                        // On phones the download button comes first; the preview follows it.
+                        className={cx(largePreview ? "order-first" : "order-last md:order-first md:w-64 md:shrink-0")}
+                    />
+                )}
+                <div className={cx("flex w-full min-w-0 flex-col items-center gap-5", beside && "md:flex-1 md:items-start")}>
+                    <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
+                    <div className={cx("flex flex-col items-center gap-1 text-center", beside && "md:items-start md:text-left")}>
+                        <h2 className="text-lg font-semibold text-primary">{title}</h2>
+                        <p className="text-sm text-tertiary">{result.summary ?? readableBytes(result.blob.size)}</p>
+                    </div>
+                    <div className="flex max-w-full items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-secondary ring-1 ring-secondary ring-inset">
+                        <File06 aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
+                        <span className="truncate">{result.filename}</span>
+                    </div>
+                    <div
+                        className={cx(
+                            "flex w-full flex-col items-stretch justify-center gap-2 sm:w-auto sm:flex-row sm:items-center",
+                            beside && "md:flex-wrap md:justify-start",
+                        )}
+                    >
+                        <Button color="primary" size="lg" iconLeading={DownloadCloud02} onClick={() => downloadBlob(result.blob, result.filename)}>
+                            {result.primaryLabel ?? "Descargar"}
+                        </Button>
+                        {onBack && (
+                            <Button color="secondary" size="lg" iconLeading={ArrowLeft} onClick={onBack}>
+                                {backLabel}
+                            </Button>
+                        )}
+                        <Button color={onBack ? "tertiary" : "secondary"} size="lg" iconLeading={RefreshCcw01} onClick={onReset}>
+                            Empezar de nuevo
+                        </Button>
+                    </div>
+                </div>
+            </div>
+            {offersNextTools && /\.pdf$/i.test(result.filename) && <NextTools result={result} />}
+        </motion.div>
+    );
+};
 
 /** Convenience hook for the common "pick → process → result" loop. */
 export const useToolState = <Input,>() => {

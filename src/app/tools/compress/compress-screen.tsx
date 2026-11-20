@@ -356,7 +356,7 @@ export const CompressScreen = () => {
         return (
             <ToolPageLayout title={TITLE} description={DESCRIPTION}>
                 {worthIt ? (
-                    <SuccessPanel result={result} onReset={reset} onBack={() => backToOptions()} title="¡PDF comprimido!" />
+                    <SuccessPanel result={result} onReset={reset} onBack={() => backToOptions()} title="¡PDF comprimido!" original={input?.file} />
                 ) : (
                     <NoSavingsPanel
                         outcome={outcome}
