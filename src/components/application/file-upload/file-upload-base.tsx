@@ -1,9 +1,12 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { UploadCloud02 } from "@untitledui/icons";
+import { usePathname } from "next/navigation";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { useFileReceiver } from "@/lib/file-drop";
 import { readableBytes } from "@/lib/pdf-utils";
+import { takeHandoff, toolSlugFromPath } from "@/lib/tool-handoff";
 import { cx } from "@/utils/cx";
 
 /**
@@ -172,6 +175,25 @@ export const FileUploadDropZone = ({
         setIsDraggingOver(false);
         processFiles(Array.from(event.dataTransfer.files));
     };
+
+    // Files dropped or pasted anywhere else on the page count as dropped here.
+    useFileReceiver((files) => processFiles(files), !isDisabled);
+
+    // A PDF sent from another tool's result screen ("Continuar con…") opens as if it had been dropped here.
+    const pathname = usePathname();
+    const processFilesRef = useRef(processFiles);
+    processFilesRef.current = processFiles;
+    useEffect(() => {
+        // After the mount settles: screens cancel the file they are reading when they unmount, and React's development
+        // double mount would cancel this one too.
+        const timer = setTimeout(() => {
+            const files = takeHandoff(toolSlugFromPath(pathname));
+            if (files) processFilesRef.current(files);
+        }, 0);
+        return () => clearTimeout(timer);
+        // Only on arrival: the file is taken once.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleInputFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         processFiles(Array.from(event.target.files || []));

@@ -10,6 +10,7 @@ import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { type PageThumbnail, renderPdfThumbnail } from "@/components/pdf-thumbnails";
 import { ErrorBanner, Notice, SuccessPanel, ToolPageLayout, type ToolResult } from "@/components/tool-shell";
+import { useFileReceiver } from "@/lib/file-drop";
 import { PROTECTED_PDF_MESSAGE, datedFilename, friendlyError, loadPdfForEditing, pagesLabel, plural, readableBytes } from "@/lib/pdf-utils";
 import { cx } from "@/utils/cx";
 
@@ -167,6 +168,9 @@ export const MergeScreen = () => {
         })();
     }, []);
 
+    // With a list on screen, more PDFs dropped or pasted anywhere on the page join it.
+    useFileReceiver(addFiles, items.length > 0 && !result);
+
     const removeItem = (id: string) => {
         const index = itemsRef.current.findIndex((item) => item.id === id);
         const item = itemsRef.current[index];
@@ -311,6 +315,7 @@ export const MergeScreen = () => {
                 <section
                     ref={listCardRef}
                     aria-labelledby="merge-list-title"
+                    data-file-drop
                     onDragEnter={(event) => {
                         if (!hasFiles(event)) return;
                         event.preventDefault();

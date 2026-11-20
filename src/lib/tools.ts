@@ -34,7 +34,11 @@ export type Tool = {
     available: boolean;
     /** Other words people use for this task (search). */
     keywords: string[];
+    /** What the person will be able to choose or do once a file is open: shown under the empty drop zone. */
+    intro?: ToolPoint[];
 };
+
+export type ToolPoint = { title: string; text: string };
 
 export const categories: Record<ToolCategory, { label: string; description: string }> = {
     organize: {
@@ -65,6 +69,11 @@ export const tools: Tool[] = [
         color: "brand",
         available: true,
         keywords: ["unir", "juntar", "combinar", "concatenar", "varios archivos"],
+        intro: [
+            { title: "Varios PDF a la vez", text: "Suelta dos o más archivos; puedes añadir más después." },
+            { title: "Tú eliges el orden", text: "Arrastra los archivos o usa las flechas antes de unirlos." },
+            { title: "Un solo PDF", text: "Verás cuántas páginas tendrá el resultado antes de fusionar." },
+        ],
     },
     {
         slug: "split",
@@ -75,6 +84,11 @@ export const tools: Tool[] = [
         color: "brand",
         available: true,
         keywords: ["separar", "partir", "extraer", "cortar", "rango"],
+        intro: [
+            { title: "Elige páginas", text: "Marca las páginas que quieres separar del resto." },
+            { title: "Por rangos", text: "Escribe rangos como 1-3, 5, 8-10: juntos en un PDF o cada uno en el suyo." },
+            { title: "Todas por separado", text: "Un PDF por página, descargados juntos en un ZIP." },
+        ],
     },
     {
         slug: "rotate",
@@ -85,6 +99,11 @@ export const tools: Tool[] = [
         color: "gray",
         available: true,
         keywords: ["girar", "voltear", "orientación", "horizontal", "vertical"],
+        intro: [
+            { title: "Página a página", text: "Gira cada página con sus botones o haciendo clic en ella." },
+            { title: "Todas a la vez", text: "Gira el documento entero a la izquierda o a la derecha." },
+            { title: "Con vista previa", text: "Ves cómo queda cada página antes de guardar." },
+        ],
     },
     {
         slug: "delete-pages",
@@ -95,6 +114,11 @@ export const tools: Tool[] = [
         color: "error",
         available: true,
         keywords: ["borrar", "quitar", "suprimir"],
+        intro: [
+            { title: "Marca lo que sobra", text: "Haz clic en las páginas que quieres eliminar." },
+            { title: "Varias seguidas", text: "Con Mayús + clic marcas un tramo entero; también puedes invertir la selección." },
+            { title: "Un PDF nuevo", text: "Descargas el documento sin esas páginas; tu archivo original no cambia." },
+        ],
     },
     {
         slug: "reorder",
@@ -105,6 +129,11 @@ export const tools: Tool[] = [
         color: "brand",
         available: true,
         keywords: ["ordenar", "mover", "cambiar orden", "arrastrar"],
+        intro: [
+            { title: "Arrastra las páginas", text: "Mueve las miniaturas hasta dejarlas en el orden que quieras." },
+            { title: "O usa las flechas", text: "Cada página tiene flechas para moverla una posición." },
+            { title: "Invertir de un clic", text: "Da la vuelta a todo el documento, o vuelve al orden original." },
+        ],
     },
     {
         slug: "compress",
@@ -115,6 +144,11 @@ export const tools: Tool[] = [
         color: "warning",
         available: true,
         keywords: ["reducir", "tamaño", "peso", "optimizar", "correo"],
+        intro: [
+            { title: "Tres niveles", text: "Ligero no cambia la calidad, Equilibrado reduce las imágenes y Fuerte convierte cada página en una imagen." },
+            { title: "Tú decides la calidad", text: "En Equilibrado y Fuerte ajustas la calidad de imagen y la resolución." },
+            { title: "Compara antes de descargar", text: "Verás el original junto al resultado y cuánto peso ahorras." },
+        ],
     },
     {
         slug: "pdf-to-image",
@@ -125,6 +159,11 @@ export const tools: Tool[] = [
         color: "success",
         available: true,
         keywords: ["jpg", "jpeg", "png", "foto", "exportar"],
+        intro: [
+            { title: "PNG o JPG", text: "Elige el formato de las imágenes." },
+            { title: "Resolución a tu medida", text: "De 75 a 300 ppp, según para qué las necesites." },
+            { title: "Todas o algunas páginas", text: "Una página da una imagen; varias, un ZIP con todas." },
+        ],
     },
     {
         slug: "image-to-pdf",
@@ -135,6 +174,11 @@ export const tools: Tool[] = [
         color: "success",
         available: true,
         keywords: ["jpg", "jpeg", "png", "foto", "escaneo"],
+        intro: [
+            { title: "Varias imágenes", text: "Suelta fotos JPG o PNG y ponlas en el orden que quieras." },
+            { title: "Tamaño de página", text: "A4, Carta o el tamaño original de cada imagen." },
+            { title: "Ajustar o llenar", text: "La imagen entera dentro de la página, o cubriéndola por completo." },
+        ],
     },
     {
         slug: "pdf-to-word",
@@ -145,6 +189,11 @@ export const tools: Tool[] = [
         color: "brand",
         available: true,
         keywords: ["docx", "doc", "office", "editable"],
+        intro: [
+            { title: "Tres tipos de conversión", text: "Automático, Texto editable o Diseño exacto." },
+            { title: "Páginas escaneadas", text: "Puede reconocer su texto (OCR) en seis idiomas." },
+            { title: "Todas o algunas páginas", text: "Descargas un .docx que se abre en Word." },
+        ],
     },
     {
         slug: "edit",
@@ -155,6 +204,11 @@ export const tools: Tool[] = [
         color: "brand",
         available: true,
         keywords: ["texto", "cambiar", "corregir", "escribir", "modificar", "fuente"],
+        intro: [
+            { title: "Cambia el texto", text: "Haz clic en cualquier línea y reescríbela con su misma fuente." },
+            { title: "Añade contenido", text: "Texto nuevo, dibujo a mano, rectángulos e imágenes." },
+            { title: "Deshacer y rehacer", text: "Nada se guarda hasta que aplicas los cambios." },
+        ],
     },
     {
         slug: "annotate",
@@ -165,6 +219,11 @@ export const tools: Tool[] = [
         color: "warning",
         available: true,
         keywords: ["resaltar", "resaltado", "subrayar", "tachar", "tachado", "comentar", "nota", "marcar"],
+        intro: [
+            { title: "Resalta, subraya y tacha", text: "Marca el documento con el color que elijas." },
+            { title: "Notas y dibujo", text: "Añade notas o dibuja a mano sobre la página." },
+            { title: "Deshacer y rehacer", text: "Corrige cualquier marca antes de guardar las anotaciones." },
+        ],
     },
     {
         slug: "watermark",
@@ -175,6 +234,11 @@ export const tools: Tool[] = [
         color: "brand",
         available: true,
         keywords: ["sello", "logo", "confidencial"],
+        intro: [
+            { title: "Tu texto", text: "Por ejemplo BORRADOR o CONFIDENCIAL, igual en todas las páginas." },
+            { title: "Posición y aspecto", text: "Diagonal, centro, arriba o abajo; con el color, el tamaño y la opacidad que elijas." },
+            { title: "Vista previa en vivo", text: "Ves cómo queda en cada página antes de aplicarla." },
+        ],
     },
     {
         slug: "ocr",
@@ -185,6 +249,11 @@ export const tools: Tool[] = [
         color: "error",
         available: true,
         keywords: ["reconocer", "texto", "buscable", "seleccionable", "escanear"],
+        intro: [
+            { title: "Seis idiomas", text: "Español, inglés, francés, alemán, italiano y portugués; puedes elegir varios." },
+            { title: "PDF buscable o solo texto", text: "Conserva las páginas con texto seleccionable, o quédate solo con el texto." },
+            { title: "Internet la primera vez", text: "Se descargan el motor y los idiomas; el documento no sale de tu equipo." },
+        ],
     },
     {
         slug: "protect",
@@ -195,6 +264,11 @@ export const tools: Tool[] = [
         color: "error",
         available: true,
         keywords: ["contraseña", "clave", "cifrar", "encriptar", "bloquear"],
+        intro: [
+            { title: "Contraseña para abrirlo", text: "Con un medidor de seguridad mientras la escribes." },
+            { title: "Restricciones opcionales", text: "Puedes impedir la impresión y la copia del texto." },
+            { title: "Guárdala bien", text: "Si la olvidas, no hay forma de recuperarla ni de abrir el documento." },
+        ],
     },
     {
         slug: "unlock",
@@ -205,6 +279,11 @@ export const tools: Tool[] = [
         color: "gray",
         available: true,
         keywords: ["quitar contraseña", "desbloquear", "clave", "descifrar"],
+        intro: [
+            { title: "Quita la contraseña", text: "Escríbela una vez y descarga el PDF sin protección." },
+            { title: "Quita las restricciones", text: "Vuelve a permitir imprimir y copiar el texto." },
+            { title: "Sin salir de tu equipo", text: "La contraseña no se envía a ningún sitio. La protección con certificado no se puede quitar." },
+        ],
     },
     {
         slug: "sign",
@@ -215,6 +294,11 @@ export const tools: Tool[] = [
         color: "brand",
         available: true,
         keywords: ["firma", "rúbrica", "manuscrita"],
+        intro: [
+            { title: "Tres formas de firmar", text: "Dibuja la firma, escribe tu nombre o sube una imagen." },
+            { title: "Colócala donde quieras", text: "Arrástrala y cambia su tamaño; puedes firmar en varias páginas." },
+            { title: "Tinta negra o azul", text: "Y si subes una imagen, se le puede quitar el fondo blanco." },
+        ],
     },
     {
         slug: "redact",
@@ -225,6 +309,11 @@ export const tools: Tool[] = [
         color: "error",
         available: true,
         keywords: ["ocultar", "tachar", "anonimizar", "datos sensibles", "redactar"],
+        intro: [
+            { title: "Marca las zonas", text: "Arrastra sobre lo que quieres tapar, o tapa la página entera." },
+            { title: "Es permanente", text: "Lo tapado no se puede recuperar del PDF nuevo." },
+            { title: "Páginas como imagen", text: "Las páginas censuradas se guardan como imagen: su texto deja de ser seleccionable." },
+        ],
     },
 ];
 

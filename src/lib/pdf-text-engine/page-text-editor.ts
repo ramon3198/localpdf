@@ -13,7 +13,19 @@
  * No rectangle is painted: the page background, gradients, images and neighbouring lines are never
  * touched, and text extraction returns the new text (no "ghost" of the old one).
  */
-import { PDFArray, type PDFContext, PDFDict, type PDFDocument, type PDFFont, PDFName, type PDFObject, type PDFRef, PDFStream } from "pdf-lib";
+import {
+    PDFArray,
+    type PDFContext,
+    PDFDict,
+    type PDFDocument,
+    type PDFFont,
+    PDFHexString,
+    PDFName,
+    type PDFObject,
+    type PDFRef,
+    PDFStream,
+    PDFString,
+} from "pdf-lib";
 import { type ContentOp, type Operand, formatNumber, hexOf, num, parseContentStream, serializeOp, str } from "./content-lexer";
 import { type EncodedChar, FontModel, type FontRegistry, type Glyph } from "./font-model";
 import { type Interpretation, type Placement, type StreamCtx, interpretPage } from "./text-interpreter";
@@ -119,9 +131,22 @@ const startsRelative = (ops: ContentOp[], i: number) => {
 const inkAdvance = (g: Placement) => (g.advPre ? (g.advUser * g.glyph.w0 * g.state.Tfs) / g.advPre : g.advUser);
 /** Advance without the word spacing (Tw) that justification adds to space glyphs: what a plain space measures. */
 const plainAdvance = (g: Placement) => (g.advPre && g.glyph.isSpace && g.state.Tw ? (g.advUser * (g.advPre - g.state.Tw)) / g.advPre : g.advUser);
+/** A page attribute, taken from the page or from the nearest node of the page tree above it that has it. */
+const inheritedEntry = (page: PDFDict, key: string): PDFObject | undefined => {
+    let node: PDFObject | undefined = page;
+    for (let depth = 0; node instanceof PDFDict && depth < 32; depth++) {
+        const value = node.lookup(N(key));
+        if (value) return value;
+        node = node.lookup(N("Parent"));
+    }
+    return undefined;
+};
+/** Whitespace by what the glyph means (its Unicode). The code-32 rule of word spacing (`isSpace`, §9.3.3) only decides
+ *  when that is unknown: subset fonts number their glyphs in order of use, so code 32 is often a letter. */
+const isWhitespace = (g: Placement) => (g.glyph.unicode ? /^\s+$/.test(g.glyph.unicode) : g.glyph.isSpace);
 /** First and last glyphs that leave ink (Word ends lines with a space glyph that must not count as the edge). */
 const inkEnds = (seg: Placement[]): [Placement, Placement] => {
-    const ink = (g: Placement) => !g.glyph.isSpace && !/^\s*$/.test(g.glyph.unicode ?? "x");
+    const ink = (g: Placement) => !isWhitespace(g) && g.glyph.unicode !== "";
     return [seg.find(ink) ?? seg[0], [...seg].reverse().find(ink) ?? seg[seg.length - 1]];
 };
 /** Text rise (Ts) of a glyph in user space: superscripts sit on the same line as their base text. */
@@ -258,9 +283,14 @@ export class PageTextEditor {
         const W = Math.max(0, target.width);
         const eps = Math.max(0.02 * fs, 0.05);
 
+        const sizeFits = (size: number) => Math.abs(size - fs) <= 0.2 * fs + 0.3;
         const glyphs = placements.filter((p) => {
             if (dot(p.xAxis, ux) < 0.985) return false;
-            if (Math.abs(p.sizeUser - fs) > 0.2 * fs + 0.3) return false;
+            if (!sizeFits(p.sizeUser)) {
+                // Type3 fonts in a glyph space of their own: the reader may have reported the glyphs' height.
+                const factor = p.state.font instanceof FontModel ? p.state.font.readerHeightFactor() : null;
+                if (!factor || !sizeFits(p.sizeUser * factor)) return false;
+            }
             const rel: [number, number] = [p.origin[0] - e, p.origin[1] - f];
             if (Math.abs(dot(rel, vx)) > 0.3 * fs) return false;
             const u = dot(rel, ux);
@@ -313,7 +343,7 @@ export class PageTextEditor {
             const span = Math.max(...copy.map((p, i) => us[i] + p.advUser)) - Math.min(...us);
             // pdfjs sometimes attaches a neighbouring space (e.g. from the next Tj at another rise) or inserts
             // pseudo-spaces for letter-spacing: allow for whitespace in item.str that we did not match.
-            const matchedSpaces = copy.filter((p) => p.glyph.isSpace || (p.glyph.unicode !== null && /^\s+$/.test(p.glyph.unicode))).length;
+            const matchedSpaces = copy.filter(isWhitespace).length;
             const tol = Math.max(0.03 * W, 0.25 * fs) + Math.max(0, strSpaces - matchedSpaces) * 0.75 * fs;
             if (W > 0 && Math.abs(span - W) > tol) return { error: `width mismatch (${span.toFixed(2)} vs ${W.toFixed(2)})`, invisible };
         }
@@ -492,6 +522,7 @@ export class PageTextEditor {
         let right = 0;
         let center = 0;
         let both = 0;
+        const rightOnly: { left: number; seg: Placement[] }[] = [];
         const seen = new Set<string>();
         for (const seg of all) {
             if (seg === line || seg[0].seq === line[0].seq) continue;
@@ -511,10 +542,20 @@ export class PageTextEditor {
             if (lm && rm)
                 both++; // justified block, or equal widths: says nothing about alignment alone
             else if (lm) left++;
-            else if (rm) right++;
-            else if (Math.abs((l + r) / 2 - (L + R) / 2) < 0.75) center++;
+            else if (rm) {
+                right++;
+                rightOnly.push({ left: l, seg });
+            } else if (Math.abs((l + r) / 2 - (L + R) / 2) < 0.75) center++;
         }
-        if (right > left && right >= center) return "right";
+        if (right > left && right >= center) {
+            // Sharing only the right edge is a right-aligned column — unless those lines are running text that also
+            // shares a left edge of its own, or word gaps are stretched (right-aligned text has neither): then this
+            // is the indented first line, or a hanging line, of a justified paragraph.
+            const wordy = rightOnly.filter(({ seg }) => seg.filter(isWhitespace).length + this.pseudoSpaces(seg).filter(Boolean).length >= 2);
+            const sharedLeft = wordy.some((a, i) => wordy.some((b, j) => i !== j && Math.abs(a.left - b.left) < 0.75));
+            const stretched = this.gapsStretched(line) || rightOnly.some(({ seg }) => this.gapsStretched(seg));
+            return sharedLeft || stretched ? "justify" : "right";
+        }
         if (center > left && center > right) return "center";
         // Justified: both edges shared with two lines, or with one line when the word gaps are visibly stretched.
         if (both >= 2 || (both === 1 && this.gapsStretched(line))) return "justify";
@@ -524,7 +565,8 @@ export class PageTextEditor {
         if (clip && Math.abs(ax[0] - 1) < 1e-3 && Math.abs((L + R) / 2 - (clip[0] + clip[2]) / 2) < 1 && L - clip[0] > 2) return "center";
         // A lone line centred on the page (titles, certificates) — horizontal text only.
         if (Math.abs(ax[0] - 1) < 1e-3) {
-            const box = this.pageDict.lookup(N("CropBox")) ?? this.pageDict.lookup(N("MediaBox"));
+            // Both boxes can be inherited from the page tree (§7.7.3.4).
+            const box = inheritedEntry(this.pageDict, "CropBox") ?? inheritedEntry(this.pageDict, "MediaBox");
             if (box instanceof PDFArray && box.size() === 4) {
                 const v = [0, 1, 2, 3].map((k) => {
                     const o = box.lookup(k);
@@ -541,7 +583,7 @@ export class PageTextEditor {
     private gapsStretched(line: Placement[]): boolean {
         const ax = line[0].xAxis;
         const size = line[0].sizeUser || 1;
-        const isWs = (g: Placement) => g.glyph.isSpace || /^\s+$/.test(g.glyph.unicode ?? "");
+        const isWs = isWhitespace;
         const pseudo = this.pseudoSpaces(line);
         const extras: number[] = [];
         let prevInk: Placement | null = null;
@@ -571,7 +613,7 @@ export class PageTextEditor {
         if (!seg || !g.advPre || !g.advUser) return { positioned: null, extra: 0 };
         const perPre = g.advUser / g.advPre;
         const ax = seg[0].xAxis;
-        const isWs = (p: Placement) => p.glyph.isSpace || /^\s+$/.test(p.glyph.unicode ?? "");
+        const isWs = isWhitespace;
         const pseudo = this.pseudoSpaces(seg);
         // The insertion already repeats the line's letter-spacing after every glyph (the space included), so only
         // what word gaps have beyond that is word spacing.
@@ -654,7 +696,7 @@ export class PageTextEditor {
      *  the narrowest one, or grows by at most 1.6 times it), so the right edge stays on the margin. */
     private rejustify(line: Placement[], D: number, soft = false): boolean {
         const ax = line[0].xAxis;
-        const isWs = (g: Placement) => g.glyph.isSpace || /^\s+$/.test(g.glyph.unicode ?? "");
+        const isWs = isWhitespace;
         const pseudo = this.pseudoSpaces(line);
         const starts: number[] = [];
         let minGap = Infinity;
@@ -713,7 +755,7 @@ export class PageTextEditor {
         const size = line[0].sizeUser || 1;
         const X = (q: [number, number]) => dot(q, ax);
         const Y = (q: [number, number]) => dot(q, perp);
-        const isWs = (g: Placement) => g.glyph.isSpace || /^\s+$/.test(g.glyph.unicode ?? "");
+        const isWs = isWhitespace;
         const leftOf = (seg: Placement[]) => X(inkEnds(seg)[0].origin);
         const rightOf = (seg: Placement[]) => {
             const l = inkEnds(seg)[1];
@@ -1241,21 +1283,46 @@ export class PageTextEditor {
             if (!sctx) continue;
             const op = sctx.ops[opIndex];
             const props = op?.op === "BDC" ? op.args[1] : undefined;
-            if (!op || props?.t !== "dict") continue;
-            const entry = props.entries.find(([k]) => k === "ActualText");
-            const cur = entry?.[1].t === "str" ? decodeTextString(entry[1].bytes) : null;
+            if (!op || (props?.t !== "dict" && props?.t !== "name")) continue;
+            // A property list named in the /Properties resources, instead of written in the operator.
+            const lists = props.t === "name" ? sctx.resources?.lookup(N("Properties")) : undefined;
+            const list = props.t === "name" && lists instanceof PDFDict ? lists.lookup(N(props.v)) : undefined;
+            if (props.t === "name" && !(lists instanceof PDFDict && list instanceof PDFDict)) continue;
+            let cur: string | null = null;
+            if (props.t === "dict") {
+                const entry = props.entries.find(([k]) => k === "ActualText");
+                cur = entry?.[1].t === "str" ? decodeTextString(entry[1].bytes) : null;
+            } else {
+                const value = (list as PDFDict).lookup(N("ActualText"));
+                cur = value instanceof PDFString || value instanceof PDFHexString ? value.decodeText() : null;
+            }
             let next: string | null = null;
             if (cur !== null) {
                 if (norm(cur) === norm(newText)) continue; // already updated (another overprinted copy)
                 if (norm(cur) === norm(oldText)) next = newText;
                 else if (oldText && cur.includes(oldText)) next = cur.replace(oldText, newText);
             }
-            const entries = props.entries
-                .map(([k, v]): [string, Operand] | null =>
-                    k !== "ActualText" ? [k, v] : next === null ? null : [k, { t: "str", bytes: encodeTextString(next), hex: true }],
-                )
-                .filter((e): e is [string, Operand] => !!e);
-            const text = serializeOp("BDC", [op.args[0], { t: "dict", entries }]);
+            let operand: Operand;
+            if (props.t === "dict") {
+                const entries = props.entries
+                    .map(([k, v]): [string, Operand] | null =>
+                        k !== "ActualText" ? [k, v] : next === null ? null : [k, { t: "str", bytes: encodeTextString(next), hex: true }],
+                    )
+                    .filter((e): e is [string, Operand] => !!e);
+                operand = { t: "dict", entries };
+            } else {
+                // Other marked content (on this page or another one) may use the same list: this sequence gets a
+                // copy of it under a new name, and the original stays as it was.
+                const copy = (list as PDFDict).clone(this.context);
+                if (next === null) copy.delete(N("ActualText"));
+                else copy.set(N("ActualText"), PDFHexString.fromText(next));
+                const all = lists as PDFDict;
+                let fresh = `${props.v}e`;
+                for (let n = 1; all.has(N(fresh)); n++) fresh = `${props.v}e${n}`;
+                all.set(N(fresh), this.context.register(copy));
+                operand = { t: "name", v: fresh };
+            }
+            const text = serializeOp("BDC", [op.args[0], operand]);
             const bytes = sctx.bytes;
             const head = latin1(bytes.subarray(0, op.start));
             const tail = latin1(bytes.subarray(op.end));
@@ -1558,6 +1625,18 @@ export class PageTextEditor {
             while (k > 0 && /\s/.test(newText[k - 1])) k--;
             return i - k;
         };
+        // The new text comes from what the reader showed, and readers normalise some characters (pdf.js: µ, the
+        // non-breaking space, fi/fl ligatures…): an untouched glyph matches in either form. Length matched, or -1.
+        const sameAt = (u: string, i: number) => {
+            if (newText.startsWith(u, i)) return u.length;
+            const n = u.normalize("NFKC");
+            return n !== u && n && newText.startsWith(n, i) ? n.length : -1;
+        };
+        const sameBefore = (u: string, end: number) => {
+            if (end >= u.length && newText.slice(end - u.length, end) === u) return u.length;
+            const n = u.normalize("NFKC");
+            return n !== u && n && end >= n.length && newText.slice(end - n.length, end) === n ? n.length : -1;
+        };
         let p = 0;
         let pc = 0;
         const starts: number[] = [];
@@ -1572,22 +1651,22 @@ export class PageTextEditor {
                 }
                 c += w;
             }
-            const u = run[p].glyph.unicode!;
-            if (!newText.startsWith(u, c)) {
+            const len = sameAt(run[p].glyph.unicode!, c);
+            if (len < 0) {
                 pc = c; // the gap before the first changed glyph stays
                 break;
             }
             starts[p] = c;
-            pc = c + u.length;
+            pc = c + len;
             p++;
         }
         let q = run.length - 1;
         let sc = newText.length;
         let wsGiven = 0;
         while (q >= p) {
-            const u = run[q].glyph.unicode!;
-            if (sc - u.length < pc || newText.slice(sc - u.length, sc) !== u) break;
-            sc -= u.length;
+            const len = sameBefore(run[q].glyph.unicode!, sc);
+            if (len < 0 || sc - len < pc) break;
+            sc -= len;
             wsGiven = 0;
             q--;
             if (pseudo[q + 1]) {
@@ -1608,12 +1687,12 @@ export class PageTextEditor {
             const t0 = tail[0];
             const perPre = last.advPre ? last.advUser / last.advPre : 0;
             const between = dot([t0.origin[0] - last.origin[0], t0.origin[1] - last.origin[1]], last.xAxis) - last.advUser;
-            const isSp = (g: Placement) => g.glyph.isSpace || /^\s+$/.test(g.glyph.unicode ?? "");
+            const isSp = isWhitespace;
             if (!isSp(last) && !isSp(t0) && between - Math.max(0, this.medianExtraGap(run) * perPre) > 0.1 * last.sizeUser) gapKept = true;
         }
         if (!gapKept) sc += wsGiven;
         // A changed part that needs a fallback font is widened to whole words, so no word mixes two typefaces.
-        const isWsGlyph = (g: Placement) => g.glyph.isSpace || /^\s+$/.test(g.glyph.unicode ?? "");
+        const isWsGlyph = isWhitespace;
         if (sc > pc && this.needsFallback(run[Math.min(p, run.length - 1)], newText.slice(pc, sc))) {
             const ws = (c: string | undefined) => c === undefined || /\s/.test(c);
             if (!ws(newText[pc]) && !ws(newText[pc - 1])) while (p > 0 && !isWsGlyph(run[p - 1]) && !pseudo[p]) pc = starts[--p];
@@ -2058,7 +2137,7 @@ export class PageTextEditor {
         }
         const vals = gaps.filter((g): g is number => g !== null).sort((x, y) => x - y);
         const base = Math.max(0, vals.length ? vals[Math.floor(vals.length / 2)] : 0);
-        const isSpace = (g: Placement) => g.glyph.isSpace || /^\s+$/.test(g.glyph.unicode ?? "");
+        const isSpace = isWhitespace;
         for (let i = 1; i < run.length; i++) {
             const g = gaps[i];
             if (g !== null && !isSpace(run[i - 1]) && !isSpace(run[i]) && g - base > 0.1 * run[i].sizeUser) out[i] = true;

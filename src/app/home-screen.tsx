@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, Lock01, SearchLg, ShieldTick, Zap } from "@untitledui/icons";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, File06, Lock01, SearchLg, ShieldTick, XClose, Zap } from "@untitledui/icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/base/badges/badges";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { Notice } from "@/components/tool-shell";
+import { useFileReceiver } from "@/lib/file-drop";
+import { readableBytes } from "@/lib/pdf-utils";
+import { sendFilesToTool } from "@/lib/tool-handoff";
 import { type Tool, type ToolCategory, categories, searchTools, toolsByCategory } from "@/lib/tools";
 import { cx } from "@/utils/cx";
+
+const isPdf = (file: File) => file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+const isImage = (file: File) => /^image\/(jpeg|png)$/.test(file.type) || /\.(jpe?g|png)$/i.test(file.name);
+/** Tools that open a PDF. */
+const takesPdf = (tool: Tool) => tool.slug !== "image-to-pdf";
 
 const PROMISES = [
     { icon: ShieldTick, title: "Privado", text: "Tus archivos no se suben a ningún servidor." },
@@ -15,31 +26,34 @@ const PROMISES = [
     { icon: Lock01, title: "Sin registro", text: "Abre una herramienta y úsala. Sin cuentas." },
 ];
 
-const ToolCard = ({ tool }: { tool: Tool }) => (
+/** A row, not a tile: icon beside the text, so the whole catalogue fits in a screen or two. */
+const ToolCard = ({ tool, onPick }: { tool: Tool; onPick?: (tool: Tool) => void }) => (
     <Link
         href={`/tools/${tool.slug}`}
+        onClick={onPick && (() => onPick(tool))}
         className={cx(
-            "group relative flex h-full flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-secondary outline-focus-ring transition duration-150 ease-out ring-inset hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2",
+            "group relative flex h-full items-start gap-3 rounded-xl bg-primary p-3.5 ring-1 ring-secondary outline-focus-ring transition duration-150 ease-out ring-inset hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2",
             !tool.available && "bg-secondary_subtle",
         )}
     >
-        <div className="flex items-start justify-between gap-3">
-            <FeaturedIcon icon={tool.icon} color={tool.color} theme="modern" size="lg" />
-            {!tool.available ? (
-                <Badge color="gray" type="pill-color" size="sm">
-                    Próximamente
-                </Badge>
-            ) : (
-                <ArrowRight
-                    aria-hidden="true"
-                    className="size-5 text-fg-quaternary transition duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-fg-brand-primary"
-                />
-            )}
-        </div>
-        <div className="flex flex-col gap-1">
-            <h3 className="text-md font-semibold text-primary">{tool.title}</h3>
+        <FeaturedIcon icon={tool.icon} color={tool.color} theme="modern" size="md" className="shrink-0" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-primary">
+                {tool.title}
+                {!tool.available && (
+                    <Badge color="gray" type="pill-color" size="sm">
+                        Próximamente
+                    </Badge>
+                )}
+            </h3>
             <p className="text-sm text-tertiary">{tool.description}</p>
         </div>
+        {tool.available && (
+            <ArrowRight
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-fg-quaternary opacity-0 transition duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-fg-brand-primary group-hover:opacity-100"
+            />
+        )}
     </Link>
 );
 
@@ -59,86 +73,143 @@ const DemoVideo = ({ className }: { className?: string }) => (
     </figure>
 );
 
-const ToolGrid = ({ items }: { items: Tool[] }) => (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+const ToolGrid = ({ items, onPick }: { items: Tool[]; onPick?: (tool: Tool) => void }) => (
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
         {items.map((tool) => (
-            <ToolCard key={tool.slug} tool={tool} />
+            <ToolCard key={tool.slug} tool={tool} onPick={onPick} />
         ))}
     </div>
 );
 
 export const HomeScreen = () => {
+    const router = useRouter();
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState<ToolCategory | null>(null);
+    /** A PDF dropped or pasted on the page: the tool chosen next opens it. */
+    const [dropped, setDropped] = useState<File | null>(null);
+    const [dropNotice, setDropNotice] = useState<string | null>(null);
+    const dropRef = useRef<HTMLDivElement>(null);
+
+    // Files dropped or pasted here have no tool yet: one PDF waits for the person to choose; several PDFs can only be
+    // merged and images can only become a PDF, so those go straight to their tool.
+    useFileReceiver((files) => {
+        const pdfs = files.filter(isPdf);
+        const images = files.filter(isImage);
+        setDropNotice(null);
+        if (pdfs.length > 1) {
+            sendFilesToTool("merge", pdfs);
+            router.push("/tools/merge");
+        } else if (pdfs.length === 1) {
+            setDropped(pdfs[0]);
+        } else if (images.length) {
+            sendFilesToTool("image-to-pdf", images);
+            router.push("/tools/image-to-pdf");
+        } else {
+            setDropped(null);
+            setDropNotice("LocalPDF trabaja con archivos PDF e imágenes JPG o PNG.");
+        }
+    });
+    useEffect(() => {
+        if (dropped || dropNotice) dropRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, [dropped, dropNotice]);
+
+    const usable = (tool: Tool) => !dropped || takesPdf(tool);
+    const pick = dropped ? (tool: Tool) => sendFilesToTool(tool.slug, [dropped]) : undefined;
     const searching = query.trim().length > 0;
-    const matches = searchTools(query).filter((tool) => !category || tool.category === category);
+    const matches = searchTools(query).filter((tool) => (!category || tool.category === category) && usable(tool));
     const shownCategories = (Object.keys(categories) as ToolCategory[]).filter((c) => !category || c === category);
 
     return (
         <div className="flex flex-col">
-            <section className="border-b border-secondary bg-primary px-4 pt-8 pb-8 md:px-6 lg:px-10 lg:pt-12 lg:pb-10">
-                <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-                    <div className="flex flex-col items-start gap-5">
-                        <Badge color="brand" type="pill-color" size="md">
+            {/* Kept short: the tools are what people came for, and they start right below. */}
+            <section className="border-b border-secondary bg-primary px-4 py-6 md:px-6 lg:px-10 lg:py-8">
+                <div className="mx-auto flex max-w-6xl flex-col gap-5">
+                    <div className="flex flex-col items-start gap-2">
+                        <Badge color="brand" type="pill-color" size="sm">
                             <span className="inline-flex items-center gap-1.5">
                                 <ShieldTick aria-hidden="true" className="size-3.5" />
                                 100% local · sin subir archivos
                             </span>
                         </Badge>
-                        <div className="flex flex-col gap-3">
-                            <h1 className="text-display-sm font-semibold tracking-tight text-primary md:text-display-md">
-                                ¿Qué quieres hacer con tu <span className="text-fg-brand-primary">PDF</span>?
-                            </h1>
-                            <p className="max-w-2xl text-lg text-tertiary">
-                                Une, divide, comprime, convierte, edita y firma documentos directamente en tu navegador. Nada sale de tu equipo.
-                            </p>
-                        </div>
+                        <h1 className="text-display-xs font-semibold tracking-tight text-primary md:text-display-sm">
+                            ¿Qué quieres hacer con tu <span className="text-fg-brand-primary">PDF</span>?
+                        </h1>
+                        <p className="max-w-2xl text-md text-tertiary">
+                            Une, divide, comprime, convierte, edita y firma en tu navegador. Nada sale de tu equipo.
+                        </p>
+                    </div>
 
-                        <div className="flex w-full max-w-2xl flex-col gap-3">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                        <div className="w-full lg:max-w-sm">
                             <Input
                                 size="md"
                                 aria-label="Buscar herramienta"
-                                placeholder="Busca una herramienta: unir, firmar, contraseña…"
+                                placeholder="Busca: unir, firmar, contraseña…"
                                 icon={SearchLg}
                                 value={query}
                                 onChange={setQuery}
                                 onKeyDown={(event) => event.key === "Escape" && setQuery("")}
                             />
-                            <div role="group" aria-label="Filtrar por categoría" className="flex flex-wrap gap-2">
-                                {[null, ...(Object.keys(categories) as ToolCategory[])].map((c) => {
-                                    const active = category === c;
-                                    return (
-                                        <button
-                                            key={c ?? "all"}
-                                            type="button"
-                                            aria-pressed={active}
-                                            onClick={() => setCategory(c)}
-                                            className={cx(
-                                                "rounded-full px-3 py-1.5 text-sm font-semibold ring-1 outline-focus-ring transition duration-100 ease-linear ring-inset focus-visible:outline-2 focus-visible:outline-offset-2",
-                                                active
-                                                    ? "bg-brand-solid text-white ring-transparent hover:bg-brand-solid_hover"
-                                                    : "bg-primary text-secondary ring-primary hover:bg-primary_hover",
-                                            )}
-                                        >
-                                            {c ? categories[c].label : "Todas"}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                        </div>
+                        {/* One line on phones too: it scrolls sideways instead of taking a second row. */}
+                        <div
+                            role="group"
+                            aria-label="Filtrar por categoría"
+                            className="-mx-4 scrollbar-hide flex gap-2 overflow-x-auto px-4 py-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+                        >
+                            {[null, ...(Object.keys(categories) as ToolCategory[])].map((c) => {
+                                const active = category === c;
+                                return (
+                                    <button
+                                        key={c ?? "all"}
+                                        type="button"
+                                        aria-pressed={active}
+                                        onClick={() => setCategory(c)}
+                                        className={cx(
+                                            "min-h-10 shrink-0 rounded-full px-3.5 text-sm font-semibold ring-1 outline-focus-ring transition duration-100 ease-linear ring-inset focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-9",
+                                            active
+                                                ? "bg-brand-solid text-white ring-transparent hover:bg-brand-solid_hover"
+                                                : "bg-primary text-secondary ring-primary hover:bg-primary_hover",
+                                        )}
+                                    >
+                                        {c ? categories[c].label : "Todas"}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
-                    <DemoVideo className="hidden lg:flex" />
                 </div>
             </section>
 
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-8 md:px-6 lg:px-10 lg:py-10">
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 md:px-6 lg:px-10 lg:py-8">
+                {(dropped || dropNotice) && (
+                    <div ref={dropRef} aria-live="polite" className="scroll-mt-4">
+                        {dropped ? (
+                            <div className="flex items-center gap-3 rounded-xl bg-brand-primary_alt p-3.5 ring-2 ring-brand ring-inset">
+                                <FeaturedIcon icon={File06} color="brand" theme="light" size="md" className="shrink-0" />
+                                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                    <p className="truncate text-sm font-semibold text-primary">
+                                        {dropped.name} <span className="font-normal text-tertiary">· {readableBytes(dropped.size)}</span>
+                                    </p>
+                                    <p className="text-sm text-tertiary">Elige una herramienta para abrirlo.</p>
+                                </div>
+                                <ButtonUtility color="tertiary" tooltip="Quitar archivo" icon={XClose} size="sm" onClick={() => setDropped(null)} />
+                            </div>
+                        ) : (
+                            <Notice tone="warning" title="No se puede abrir ese archivo">
+                                {dropNotice}
+                            </Notice>
+                        )}
+                    </div>
+                )}
+
                 {searching ? (
                     matches.length ? (
                         <section className="flex flex-col gap-4" aria-live="polite">
                             <h2 className="text-sm font-semibold text-tertiary">
                                 {matches.length === 1 ? "1 herramienta" : `${matches.length} herramientas`} para “{query.trim()}”
                             </h2>
-                            <ToolGrid items={matches} />
+                            <ToolGrid items={matches} onPick={pick} />
                         </section>
                     ) : (
                         <div
@@ -152,22 +223,20 @@ export const HomeScreen = () => {
                     )
                 ) : (
                     shownCategories.map((c) => (
-                        <section key={c} className="flex flex-col gap-4">
-                            <div className="flex items-baseline justify-between gap-4">
-                                <div>
-                                    <h2 className="text-xl font-semibold text-primary">{categories[c].label}</h2>
-                                    <p className="text-sm text-tertiary">{categories[c].description}</p>
-                                </div>
+                        <section key={c} className="flex flex-col gap-3">
+                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                                <h2 className="text-lg font-semibold text-primary">{categories[c].label}</h2>
+                                <p className="text-sm text-tertiary">{categories[c].description}</p>
                             </div>
-                            <ToolGrid items={toolsByCategory(c)} />
+                            <ToolGrid items={toolsByCategory(c).filter(usable)} onPick={pick} />
                         </section>
                     ))
                 )}
 
                 {!searching && (
-                    <section className="flex flex-col gap-4 lg:hidden">
-                        <h2 className="text-xl font-semibold text-primary">Míralo en acción</h2>
-                        <DemoVideo />
+                    <section className="flex flex-col gap-3 border-t border-secondary pt-8">
+                        <h2 className="text-lg font-semibold text-primary">Míralo en acción</h2>
+                        <DemoVideo className="max-w-2xl" />
                     </section>
                 )}
 

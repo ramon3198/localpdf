@@ -16,18 +16,28 @@ import { getPdfjs } from "@/lib/pdfjs-loader";
 import { cx } from "@/utils/cx";
 
 type SourceFile = { file: File; pageCount: number };
-type Mode = "light" | "strong";
+type Mode = "light" | "balanced" | "strong";
 type Outcome = { mode: Mode; inputBytes: number; outputBytes: number };
 type Progress = { label: string; pct: number | null };
 type Analysis = { hasText: boolean; looksScanned: boolean };
 
 const TITLE = "Comprimir PDF";
 const DESCRIPTION = "Reduce el peso manteniendo la calidad que necesites.";
-const MODE_LABEL: Record<Mode, string> = { light: "Ligero", strong: "Fuerte" };
+const MODE_LABEL: Record<Mode, string> = { light: "Ligero", balanced: "Equilibrado", strong: "Fuerte" };
 /** Below this saving the result is not worth a download (and is often bigger). */
 const MIN_SAVING = 0.02;
 const DEFAULT_QUALITY = 75;
+/** "Fuerte": resolution of the whole page turned into an image. */
 const DEFAULT_DPI = 100;
+/** "Equilibrado": resolution the images keep at the size they are shown. Higher: the text around them stays sharp anyway. */
+const DEFAULT_IMAGE_DPI = 150;
+
+/** The level worth trying when `mode` saved nothing. */
+const nextMode = (mode: Mode, looksScanned: boolean): Mode =>
+    mode === "light" ? (looksScanned ? "strong" : "balanced") : mode === "balanced" ? "strong" : "balanced";
+
+/** Text PDFs lose nothing with "Ligero"; heavy pages shrink through their images, keeping the text when there is any. */
+const recommendedMode = (found: Analysis): Mode => (!found.looksScanned ? "light" : found.hasText ? "balanced" : "strong");
 
 const percent = (value: number) => `${Math.round(value)} %`;
 /** Rounded down, so a 99.8 % saving never reads as "100 %". */
@@ -168,6 +178,7 @@ export const CompressScreen = () => {
     const [mode, setMode] = useState<Mode>("light");
     const [quality, setQuality] = useState(DEFAULT_QUALITY);
     const [dpi, setDpi] = useState(DEFAULT_DPI);
+    const [imageDpi, setImageDpi] = useState(DEFAULT_IMAGE_DPI);
     const [analysis, setAnalysis] = useState<Analysis | null>(null);
     const [progress, setProgress] = useState<Progress | null>(null);
     const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -211,7 +222,7 @@ export const CompressScreen = () => {
                 .then((found) => {
                     if (fileRef.current !== fileId) return;
                     setAnalysis(found);
-                    if (!modeTouched.current) setMode(found.looksScanned ? "strong" : "light");
+                    if (!modeTouched.current) setMode(recommendedMode(found));
                 })
                 .catch(() => undefined);
         } catch (err) {
@@ -248,6 +259,30 @@ export const CompressScreen = () => {
                 await optimizeStructure(doc);
                 bytes = await doc.save({ useObjectStreams: true });
                 // Safety net: never hand out a file that can't be opened again.
+                await loadPdfForEditing(bytes, { updateMetadata: false });
+            } else if (mode === "balanced") {
+                setProgress({ label: "Optimizando la estructura del PDF…", pct: null });
+                const [doc, { recompressImages }] = await Promise.all([
+                    loadPdfForEditing(input.file, { updateMetadata: false }),
+                    import("@/lib/recompress-images"),
+                ]);
+                if (!isCurrent()) return;
+                // First, so that an image repeated on every page is reduced only once.
+                await optimizeStructure(doc);
+                if (!isCurrent()) return;
+                await recompressImages(doc, {
+                    quality,
+                    maxDpi: imageDpi,
+                    isCancelled: () => !isCurrent(),
+                    onProgress: (done, total) => {
+                        if (isCurrent() && total) {
+                            setProgress({ label: `Reduciendo imagen ${Math.min(done + 1, total)} de ${total}…`, pct: Math.round((done / total) * 100) });
+                        }
+                    },
+                });
+                if (!isCurrent()) return;
+                setProgress({ label: "Guardando el PDF…", pct: 100 });
+                bytes = await doc.save({ useObjectStreams: true });
                 await loadPdfForEditing(bytes, { updateMetadata: false });
             } else {
                 const [{ PDFDocument }, pdfjs] = await Promise.all([import("pdf-lib"), getPdfjs()]);
@@ -321,12 +356,12 @@ export const CompressScreen = () => {
         return (
             <ToolPageLayout title={TITLE} description={DESCRIPTION}>
                 {worthIt ? (
-                    <SuccessPanel result={result} onReset={reset} onBack={() => backToOptions()} title="¡PDF comprimido!" />
+                    <SuccessPanel result={result} onReset={reset} onBack={() => backToOptions()} title="¡PDF comprimido!" original={input?.file} />
                 ) : (
                     <NoSavingsPanel
                         outcome={outcome}
                         looksScanned={analysis?.looksScanned ?? false}
-                        onTryOther={() => backToOptions(outcome.mode === "light" ? "strong" : "light")}
+                        onTryOther={() => backToOptions(nextMode(outcome.mode, analysis?.looksScanned ?? false))}
                         onAdjust={() => backToOptions()}
                         onDownload={outcome.outputBytes < outcome.inputBytes ? () => downloadBlob(result.blob, result.filename) : undefined}
                         onReset={reset}
@@ -370,12 +405,18 @@ export const CompressScreen = () => {
 
                     <AriaRadioGroup value={mode} onChange={(value) => chooseMode(value as Mode)} isDisabled={isBusy} className="flex flex-col gap-3">
                         <AriaLabel className="text-sm font-medium text-secondary">Nivel de compresión</AriaLabel>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                             <OptionCard
                                 value="light"
                                 title="Ligero"
-                                badge={analysis && !analysis.looksScanned ? <RecommendedBadge /> : null}
+                                badge={analysis && recommendedMode(analysis) === "light" ? <RecommendedBadge /> : null}
                                 description="Optimiza la estructura del PDF y quita datos internos que no se ven. El texto sigue siendo seleccionable y la calidad no cambia."
+                            />
+                            <OptionCard
+                                value="balanced"
+                                title="Equilibrado"
+                                badge={analysis && recommendedMode(analysis) === "balanced" ? <RecommendedBadge /> : null}
+                                description="Reduce el peso de las imágenes del PDF. El texto sigue siendo seleccionable y se conservan los enlaces y formularios."
                             />
                             <OptionCard
                                 value="strong"
@@ -385,7 +426,7 @@ export const CompressScreen = () => {
                                         Fuerte
                                     </span>
                                 }
-                                badge={analysis?.looksScanned ? <RecommendedBadge /> : null}
+                                badge={analysis && recommendedMode(analysis) === "strong" ? <RecommendedBadge /> : null}
                                 description="Convierte cada página en una imagen JPG. Reduce mucho el peso, sobre todo en escaneos, pero el texto deja de ser seleccionable."
                             />
                         </div>
@@ -398,12 +439,14 @@ export const CompressScreen = () => {
                         </Notice>
                     )}
                     {mode === "light" && analysis?.looksScanned && (
-                        <Notice tone="info" title="Parece un PDF escaneado">
-                            El nivel Ligero apenas reducirá su peso. El nivel Fuerte lo comprimirá mucho más.
+                        <Notice tone="info" title={analysis.hasText ? "Este PDF pesa sobre todo por sus imágenes" : "Parece un PDF escaneado"}>
+                            {analysis.hasText
+                                ? "El nivel Ligero apenas reducirá su peso. El nivel Equilibrado reducirá las imágenes y conservará el texto."
+                                : "El nivel Ligero apenas reducirá su peso. El nivel Fuerte lo comprimirá mucho más."}
                         </Notice>
                     )}
 
-                    {mode === "strong" && (
+                    {mode !== "light" && (
                         <div
                             className={cx(
                                 "grid grid-cols-1 gap-6 rounded-xl bg-secondary p-4 ring-1 ring-secondary ring-inset md:grid-cols-2",
@@ -429,20 +472,37 @@ export const CompressScreen = () => {
                             </div>
                             <div className="flex flex-col gap-2">
                                 <p className="flex items-center justify-between gap-3 text-sm font-medium text-secondary">
-                                    <span>Resolución</span>
-                                    <span className="text-tertiary tabular-nums">{dpi} ppp</span>
+                                    <span>{mode === "balanced" ? "Resolución de las imágenes" : "Resolución"}</span>
+                                    <span className="text-tertiary tabular-nums">{mode === "balanced" ? imageDpi : dpi} ppp</span>
                                 </p>
-                                <Slider
-                                    value={[dpi]}
-                                    onChange={(v) => setDpi((Array.isArray(v) ? v[0] : v) as number)}
-                                    minValue={50}
-                                    maxValue={200}
-                                    step={10}
-                                    isDisabled={isBusy}
-                                    formatOptions={{ maximumFractionDigits: 0 }}
-                                    aria-label="Resolución en puntos por pulgada"
-                                />
-                                <p className="text-sm text-tertiary">Más resolución: se lee mejor al ampliar, pero pesa más.</p>
+                                {mode === "balanced" ? (
+                                    <Slider
+                                        value={[imageDpi]}
+                                        onChange={(v) => setImageDpi((Array.isArray(v) ? v[0] : v) as number)}
+                                        minValue={70}
+                                        maxValue={300}
+                                        step={10}
+                                        isDisabled={isBusy}
+                                        formatOptions={{ maximumFractionDigits: 0 }}
+                                        aria-label="Resolución de las imágenes en puntos por pulgada"
+                                    />
+                                ) : (
+                                    <Slider
+                                        value={[dpi]}
+                                        onChange={(v) => setDpi((Array.isArray(v) ? v[0] : v) as number)}
+                                        minValue={50}
+                                        maxValue={200}
+                                        step={10}
+                                        isDisabled={isBusy}
+                                        formatOptions={{ maximumFractionDigits: 0 }}
+                                        aria-label="Resolución en puntos por pulgada"
+                                    />
+                                )}
+                                <p className="text-sm text-tertiary">
+                                    {mode === "balanced"
+                                        ? "Solo afecta a las imágenes: el texto se mantiene nítido."
+                                        : "Más resolución: se lee mejor al ampliar, pero pesa más."}
+                                </p>
                             </div>
                         </div>
                     )}
@@ -492,13 +552,15 @@ const NoSavingsPanel = ({
 }) => {
     const sizes = `${readableBytes(outcome.inputBytes)} → ${readableBytes(outcome.outputBytes)}`;
     const grew = outcome.outputBytes > outcome.inputBytes;
-    const other: Mode = outcome.mode === "light" ? "strong" : "light";
+    const other = nextMode(outcome.mode, looksScanned);
     const advice =
         outcome.mode === "strong"
-            ? "Baja la calidad o la resolución, o prueba el nivel Ligero, que conserva el texto."
-            : looksScanned
-              ? "Es un PDF escaneado: el nivel Fuerte puede reducirlo mucho más."
-              : "Si no necesitas seleccionar el texto, el nivel Fuerte puede reducirlo más.";
+            ? "Baja la calidad o la resolución, o prueba el nivel Equilibrado, que conserva el texto."
+            : outcome.mode === "balanced"
+              ? "Baja la calidad o la resolución de las imágenes. Si no necesitas seleccionar el texto, el nivel Fuerte puede reducirlo más."
+              : looksScanned
+                ? "Es un PDF escaneado: el nivel Fuerte puede reducirlo mucho más."
+                : "El nivel Equilibrado reduce las imágenes y conserva el texto.";
     return (
         <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -520,7 +582,7 @@ const NoSavingsPanel = ({
                 <Button color="primary" size="lg" iconLeading={Archive} onClick={onTryOther}>
                     Probar el nivel {MODE_LABEL[other]}
                 </Button>
-                {outcome.mode === "strong" && (
+                {outcome.mode !== "light" && (
                     <Button color="secondary" size="lg" iconLeading={ArrowLeft} onClick={onAdjust}>
                         Volver y ajustar
                     </Button>

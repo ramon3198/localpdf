@@ -9,6 +9,7 @@ import { FileUploadDropZone } from "@/components/application/file-upload/file-up
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { ErrorBanner, SuccessPanel, ToolPageLayout, useToolState } from "@/components/tool-shell";
+import { useFileReceiver } from "@/lib/file-drop";
 import { UserFacingError, datedFilename, friendlyError, pagesLabel, plural, readableBytes } from "@/lib/pdf-utils";
 import { cx } from "@/utils/cx";
 
@@ -282,6 +283,9 @@ export const ImageToPdfScreen = () => {
         void checkImages(next);
     };
 
+    // With a list on screen, more images dropped or pasted anywhere on the page join it.
+    useFileReceiver(addFiles, items.length > 0 && !isBusy && !result);
+
     const removeItem = (id: string) => {
         const item = items.find((it) => it.id === id);
         if (!item) return;
@@ -442,6 +446,7 @@ export const ImageToPdfScreen = () => {
 
             {items.length > 0 && (
                 <div
+                    data-file-drop
                     onDragOver={(event) => {
                         if (!hasFiles(event) || isBusy) return;
                         event.preventDefault();

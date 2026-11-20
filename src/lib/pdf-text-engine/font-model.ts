@@ -164,6 +164,7 @@ export class FontModel implements DecodingFont {
      *  glyphs of the family's other faces): their real advance and Unicode, written back by `writeAdditions`. */
     private readonly added = new Map<number, { w: number; unicode: string }>();
     private outline: number | null | undefined = undefined;
+    private heightFactor: number | null | undefined = undefined;
 
     constructor(
         readonly context: PDFContext,
@@ -460,15 +461,25 @@ export class FontModel implements DecodingFont {
     private buildReverse(): Map<string, number> {
         if (this.reverse) return this.reverse;
         const m = new Map<string, number>();
+        const byEncoding = (code: number) => (this.kind !== "type0" && this.encoding ? glyphNameToUnicode(this.encoding[code]) : null);
         const consider = (u: string | null | undefined, code: number) => {
             if (!u) return;
             const prev = m.get(u);
-            // Prefer codes actually used in the document (guaranteed to render).
-            if (prev === undefined || (!this.usedCodes.has(prev) && this.usedCodes.has(code))) m.set(u, code);
+            if (prev === undefined) {
+                m.set(u, code);
+                return;
+            }
+            // Prefer codes actually used in the document (guaranteed to render); between equals, the code whose
+            // glyph is this character by name rather than an alternate form mapped to it (a swash, a small cap).
+            const used = this.usedCodes.has(code);
+            const prevUsed = this.usedCodes.has(prev);
+            if ((used && !prevUsed) || (used === prevUsed && byEncoding(code) === u && byEncoding(prev) !== u)) m.set(u, code);
         };
         if (this.toUnicode) for (const [code, u] of this.toUnicode) consider(u, code);
         if (this.kind !== "type0" && this.encoding) {
-            for (let code = 0; code < 256; code++) consider(glyphNameToUnicode(this.encoding[code]), code);
+            // ToUnicode says what a code means (§9.10.2): where it speaks, the glyph name must not add a second
+            // meaning. Subset fonts number glyphs in order of use, and code 0x23 can be "J", not "#".
+            for (let code = 0; code < 256; code++) if (!this.toUnicode?.has(code)) consider(byEncoding(code), code);
         }
         this.reverse = m;
         return m;
@@ -496,6 +507,49 @@ export class FontModel implements DecodingFont {
         // Simple embedded font. A full (non-subset) program has every glyph of its encoding.
         if (!this.isSubset) return this.widthOf(code) > 0;
         return false;
+    }
+
+    /**
+     * Type3 fonts whose glyph space is not the usual 1/1000: for text at size 1 or less (or when the font's box had to
+     * be measured from its glyphs), readers such as pdf.js report the height of the font's box instead of the nominal
+     * size. That height as a multiple of the font size; null for every other font.
+     */
+    readerHeightFactor(): number | null {
+        if (this.heightFactor !== undefined) return this.heightFactor;
+        this.heightFactor = null;
+        if (this.kind !== "type3") return null;
+        const numbers = (o: PDFObject | undefined) => (o instanceof PDFArray ? o.asArray().map((v) => numOf(this.context.lookup(v) as PDFObject) ?? NaN) : []);
+        const m = numbers(this.dict.lookup(N("FontMatrix")));
+        if (m.length !== 6 || !m.every(Number.isFinite)) return null;
+        const usual = [0.001, 0, 0, 0.001, 0, 0];
+        if (m.every((v, i) => Math.abs(v - usual[i]) < 1e-9)) return null;
+        const box = numbers(this.dict.lookup(N("FontBBox")));
+        let height = box.length === 4 && box.every(Number.isFinite) ? box[3] - box[1] : 0;
+        if (!(height > 0)) {
+            // An empty box: the union of the boxes each glyph declares with d1 (wx wy llx lly urx ury).
+            const procs = this.dict.lookup(N("CharProcs"));
+            let low = Infinity;
+            let high = -Infinity;
+            if (procs instanceof PDFDict) {
+                for (const key of procs.keys()) {
+                    const bytes = streamBytes(procs.lookup(key) as PDFObject);
+                    const head = bytes ? String.fromCharCode(...bytes.subarray(0, 200)) : "";
+                    const d1 = head
+                        .match(/((?:-?[\d.]+\s+){6})d1\b/)?.[1]
+                        .trim()
+                        .split(/\s+/)
+                        .map(Number);
+                    if (d1 && d1.every(Number.isFinite)) {
+                        low = Math.min(low, d1[3]);
+                        high = Math.max(high, d1[5]);
+                    }
+                }
+            }
+            height = high - low;
+        }
+        const factor = Math.abs(height * m[3]);
+        this.heightFactor = Number.isFinite(factor) && factor > 0 ? factor : null;
+        return this.heightFactor;
     }
 
     /** Type3 fonts whose glyphs are rings of constant thickness (Chrome's -webkit-text-stroke): that thickness in
