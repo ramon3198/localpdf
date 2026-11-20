@@ -574,6 +574,68 @@ const cases = {
         );
     },
 
+    // /ActualText kept in the page's /Properties (a named property list) follows the edit too.
+    async actualTextNamed() {
+        const { PDFString, PDFHexString, PDFDict } = require("pdf-lib");
+        const src = await makePdf("/Span /MC0 BDC BT /F1 12 Tf 72 700 Td (Precio antiguo) Tj ET EMC", {
+            prepare: (doc, page) =>
+                page.node
+                    .lookup(PDFName.of("Resources"))
+                    .set(PDFName.of("Properties"), doc.context.obj({ MC0: { ActualText: PDFString.of("Precio antiguo") } })),
+        });
+        const { results, bytes } = await edit(src, [["Precio antiguo", "Precio nuevo"]]);
+        const name = (await rawContent(bytes)).match(/\/Span\s*\/(\S+)\s+BDC/)?.[1];
+        const lists = (await PDFDocument.load(bytes)).getPage(0).node.Resources()?.lookup(PDFName.of("Properties"));
+        const list = name && lists instanceof PDFDict ? lists.lookup(PDFName.of(name)) : undefined;
+        const value = list instanceof PDFDict ? list.lookup(PDFName.of("ActualText")) : undefined;
+        const text = value instanceof PDFString || value instanceof PDFHexString ? value.decodeText() : null;
+        check("actualtext (named): applied", allOk(results), JSON.stringify(results));
+        check("actualtext (named): updated", text === "Precio nuevo", `${name}: ${text}`);
+        // Another page or sequence may use the same list.
+        const original = lists instanceof PDFDict ? lists.lookup(PDFName.of("MC0")) : undefined;
+        const kept = original instanceof PDFDict ? original.lookup(PDFName.of("ActualText")) : undefined;
+        check("actualtext (named): the shared list is left as it was", kept instanceof PDFString && kept.decodeText() === "Precio antiguo", `${kept}`);
+    },
+
+    // A span of its own inside the line (a soft hyphen at the line's end) keeps its /ActualText when other words change.
+    async actualTextOtherSpan() {
+        const src = await makePdf("BT /F1 12 Tf 72 700 Td (Texto de ejem) Tj /Span <</ActualText <FEFF00AD>>> BDC (-) Tj EMC ET");
+        const { results, bytes } = await edit(src, [["Texto", "Parrafo"]]);
+        const raw = await rawContent(bytes);
+        check("actualtext (other span): applied", allOk(results), JSON.stringify(results));
+        check("actualtext (other span): kept", /ActualText\s*<FEFF00AD>/i.test(raw), raw.slice(0, 200));
+    },
+
+    // A Type3 font whose glyph space is not the usual 1/1000 (FontMatrix 1, drawn at size 1): readers report the height
+    // of its glyphs, not the nominal size, and the run must still be found.
+    async type3GlyphSpace() {
+        const unit = 12;
+        const type3 = (doc) => {
+            const ctx = doc.context;
+            const box = (w) => ctx.register(ctx.flateStream(`${w} 0 d0 0 0 ${w * 0.8} ${unit * 0.7} re f`));
+            const widths = { 32: 0.3, 65: 0.6, 66: 0.5, 67: 0.7 };
+            return ctx.register(
+                ctx.obj({
+                    Type: "Font",
+                    Subtype: "Type3",
+                    FontBBox: [0, 0, unit, unit],
+                    FontMatrix: [1, 0, 0, 1, 0, 0],
+                    CharProcs: { A: box(unit * 0.6), B: box(unit * 0.5), C: box(unit * 0.7), space: box(unit * 0.3) },
+                    Encoding: { Type: "Encoding", Differences: [32, "space", 65, "A", "B", "C"] },
+                    FirstChar: 32,
+                    LastChar: 67,
+                    Widths: Array.from({ length: 36 }, (_, i) => unit * (widths[i + 32] ?? 0)),
+                    Resources: {},
+                }),
+            );
+        };
+        const src = await makePdf("BT /F1 1 Tf 72 700 Td (ABCAB) Tj ( CAB) Tj ET", { fonts: { F1: type3 } });
+        const { results, bytes } = await edit(src, [["ABCAB", "ABCABBA"]]);
+        const text = (await itemsOf(bytes)).map((i) => i.str).join(" ");
+        check("type3 glyph space: applied", allOk(results), JSON.stringify(results));
+        check("type3 glyph space: text changed", text.includes("ABCABBA"), text);
+    },
+
     // A lone centred title keeps its centre when the page takes its MediaBox from the page tree.
     async inheritedPageBox() {
         const t = "Informe anual";

@@ -317,8 +317,12 @@ export const interpretPage = (
                     marked.push(null);
                     break;
                 case "BDC": {
+                    // The property list is written in place or named in the /Properties resources (§14.6.2).
                     const props = a[1];
-                    const has = props?.t === "dict" && props.entries.some(([k]) => k === "ActualText");
+                    const listed = props?.t === "name" ? lookupRes("Properties", props.v) : undefined;
+                    const list = listed instanceof PDFRef ? context.lookup(listed) : listed;
+                    const has =
+                        (props?.t === "dict" && props.entries.some(([k]) => k === "ActualText")) || (list instanceof PDFDict && list.has(N("ActualText")));
                     marked.push(has ? { streamKey: ctx.key, opIndex: i } : null);
                     break;
                 }

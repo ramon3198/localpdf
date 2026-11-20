@@ -13,7 +13,19 @@
  * No rectangle is painted: the page background, gradients, images and neighbouring lines are never
  * touched, and text extraction returns the new text (no "ghost" of the old one).
  */
-import { PDFArray, type PDFContext, PDFDict, type PDFDocument, type PDFFont, PDFName, type PDFObject, type PDFRef, PDFStream } from "pdf-lib";
+import {
+    PDFArray,
+    type PDFContext,
+    PDFDict,
+    type PDFDocument,
+    type PDFFont,
+    PDFHexString,
+    PDFName,
+    type PDFObject,
+    type PDFRef,
+    PDFStream,
+    PDFString,
+} from "pdf-lib";
 import { type ContentOp, type Operand, formatNumber, hexOf, num, parseContentStream, serializeOp, str } from "./content-lexer";
 import { type EncodedChar, FontModel, type FontRegistry, type Glyph } from "./font-model";
 import { type Interpretation, type Placement, type StreamCtx, interpretPage } from "./text-interpreter";
@@ -271,9 +283,14 @@ export class PageTextEditor {
         const W = Math.max(0, target.width);
         const eps = Math.max(0.02 * fs, 0.05);
 
+        const sizeFits = (size: number) => Math.abs(size - fs) <= 0.2 * fs + 0.3;
         const glyphs = placements.filter((p) => {
             if (dot(p.xAxis, ux) < 0.985) return false;
-            if (Math.abs(p.sizeUser - fs) > 0.2 * fs + 0.3) return false;
+            if (!sizeFits(p.sizeUser)) {
+                // Type3 fonts in a glyph space of their own: the reader may have reported the glyphs' height.
+                const factor = p.state.font instanceof FontModel ? p.state.font.readerHeightFactor() : null;
+                if (!factor || !sizeFits(p.sizeUser * factor)) return false;
+            }
             const rel: [number, number] = [p.origin[0] - e, p.origin[1] - f];
             if (Math.abs(dot(rel, vx)) > 0.3 * fs) return false;
             const u = dot(rel, ux);
@@ -1266,21 +1283,46 @@ export class PageTextEditor {
             if (!sctx) continue;
             const op = sctx.ops[opIndex];
             const props = op?.op === "BDC" ? op.args[1] : undefined;
-            if (!op || props?.t !== "dict") continue;
-            const entry = props.entries.find(([k]) => k === "ActualText");
-            const cur = entry?.[1].t === "str" ? decodeTextString(entry[1].bytes) : null;
+            if (!op || (props?.t !== "dict" && props?.t !== "name")) continue;
+            // A property list named in the /Properties resources, instead of written in the operator.
+            const lists = props.t === "name" ? sctx.resources?.lookup(N("Properties")) : undefined;
+            const list = props.t === "name" && lists instanceof PDFDict ? lists.lookup(N(props.v)) : undefined;
+            if (props.t === "name" && !(lists instanceof PDFDict && list instanceof PDFDict)) continue;
+            let cur: string | null = null;
+            if (props.t === "dict") {
+                const entry = props.entries.find(([k]) => k === "ActualText");
+                cur = entry?.[1].t === "str" ? decodeTextString(entry[1].bytes) : null;
+            } else {
+                const value = (list as PDFDict).lookup(N("ActualText"));
+                cur = value instanceof PDFString || value instanceof PDFHexString ? value.decodeText() : null;
+            }
             let next: string | null = null;
             if (cur !== null) {
                 if (norm(cur) === norm(newText)) continue; // already updated (another overprinted copy)
                 if (norm(cur) === norm(oldText)) next = newText;
                 else if (oldText && cur.includes(oldText)) next = cur.replace(oldText, newText);
             }
-            const entries = props.entries
-                .map(([k, v]): [string, Operand] | null =>
-                    k !== "ActualText" ? [k, v] : next === null ? null : [k, { t: "str", bytes: encodeTextString(next), hex: true }],
-                )
-                .filter((e): e is [string, Operand] => !!e);
-            const text = serializeOp("BDC", [op.args[0], { t: "dict", entries }]);
+            let operand: Operand;
+            if (props.t === "dict") {
+                const entries = props.entries
+                    .map(([k, v]): [string, Operand] | null =>
+                        k !== "ActualText" ? [k, v] : next === null ? null : [k, { t: "str", bytes: encodeTextString(next), hex: true }],
+                    )
+                    .filter((e): e is [string, Operand] => !!e);
+                operand = { t: "dict", entries };
+            } else {
+                // Other marked content (on this page or another one) may use the same list: this sequence gets a
+                // copy of it under a new name, and the original stays as it was.
+                const copy = (list as PDFDict).clone(this.context);
+                if (next === null) copy.delete(N("ActualText"));
+                else copy.set(N("ActualText"), PDFHexString.fromText(next));
+                const all = lists as PDFDict;
+                let fresh = `${props.v}e`;
+                for (let n = 1; all.has(N(fresh)); n++) fresh = `${props.v}e${n}`;
+                all.set(N(fresh), this.context.register(copy));
+                operand = { t: "name", v: fresh };
+            }
+            const text = serializeOp("BDC", [op.args[0], operand]);
             const bytes = sctx.bytes;
             const head = latin1(bytes.subarray(0, op.start));
             const tail = latin1(bytes.subarray(op.end));
