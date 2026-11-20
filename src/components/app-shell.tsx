@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, HomeLine, SearchLg, ShieldTick } from "@untitledui/icons";
+import { ChevronRight, HomeLine, SearchLg, ShieldTick, UploadCloud02 } from "@untitledui/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { MobileNavigationHeader } from "@/components/application/app-navigation/base-components/mobile-header";
@@ -12,6 +12,7 @@ import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { LocalPdfLogo } from "@/components/foundations/logo/local-pdf-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { deliverFiles, hasFileReceiver } from "@/lib/file-drop";
 import { type Tool, type ToolCategory, categories, getTool, searchTools, toolsByCategory } from "@/lib/tools";
 import { cx } from "@/utils/cx";
 
@@ -157,17 +158,55 @@ const Sidebar = ({ activeUrl }: { activeUrl: string }) => {
 
 export const AppShell = ({ children }: { children: ReactNode }) => {
     const pathname = usePathname() ?? "/";
+    const [fileOver, setFileOver] = useState(false);
 
-    // A file dropped outside a drop zone would make the browser open it and throw away the user's work.
+    // Files dropped or pasted anywhere on the page go to whatever is ready to take them (see lib/file-drop). A file
+    // nothing can take is still stopped here: the browser would open it and throw away the user's work.
     useEffect(() => {
-        const guard = (event: DragEvent) => {
-            if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+        const carriesFiles = (event: DragEvent) => !!event.dataTransfer?.types.includes("Files");
+        // Drop zones and file lists handle what lands on them themselves.
+        const onOwnZone = (event: Event) => event.target instanceof Element && !!event.target.closest("[data-dropzone], [data-file-drop]");
+
+        const onEnter = (event: DragEvent) => {
+            if (carriesFiles(event)) setFileOver(hasFileReceiver());
         };
-        window.addEventListener("dragover", guard);
-        window.addEventListener("drop", guard);
+        const onOver = (event: DragEvent) => {
+            if (!carriesFiles(event)) return;
+            event.preventDefault();
+            if (event.dataTransfer && !onOwnZone(event)) event.dataTransfer.dropEffect = hasFileReceiver() ? "copy" : "none";
+        };
+        const onLeave = (event: DragEvent) => {
+            // No related target: the pointer left the window.
+            if (!event.relatedTarget) setFileOver(false);
+        };
+        const onDrop = (event: DragEvent) => {
+            if (!carriesFiles(event)) return;
+            event.preventDefault();
+            setFileOver(false);
+            if (!onOwnZone(event)) deliverFiles(Array.from(event.dataTransfer?.files ?? []));
+        };
+        const onPaste = (event: ClipboardEvent) => {
+            const files = Array.from(event.clipboardData?.files ?? []);
+            const target = event.target as HTMLElement | null;
+            const typing = !!target && (target.isContentEditable || /^(input|textarea)$/i.test(target.tagName));
+            if (files.length && !typing && deliverFiles(files)) event.preventDefault();
+        };
+        const stop = () => setFileOver(false);
+
+        // Capture phase: a drop zone stops the event from bubbling, and the overlay must still go away.
+        window.addEventListener("dragenter", onEnter, true);
+        window.addEventListener("dragover", onOver, true);
+        window.addEventListener("dragleave", onLeave, true);
+        window.addEventListener("drop", onDrop, true);
+        window.addEventListener("dragend", stop, true);
+        window.addEventListener("paste", onPaste);
         return () => {
-            window.removeEventListener("dragover", guard);
-            window.removeEventListener("drop", guard);
+            window.removeEventListener("dragenter", onEnter, true);
+            window.removeEventListener("dragover", onOver, true);
+            window.removeEventListener("dragleave", onLeave, true);
+            window.removeEventListener("drop", onDrop, true);
+            window.removeEventListener("dragend", stop, true);
+            window.removeEventListener("paste", onPaste);
         };
     }, []);
 
@@ -176,6 +215,17 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
         <div className="flex min-h-dvh flex-col lg:flex-row">
             <Sidebar activeUrl={pathname} />
             <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+            {fileOver && (
+                <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-50 p-3">
+                    <div className="flex size-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-brand bg-primary/85 text-center backdrop-blur-xs">
+                        <FeaturedIcon icon={UploadCloud02} color="brand" theme="light" size="xl" />
+                        <p className="text-lg font-semibold text-primary">
+                            {pathname === "/" ? "Suelta tu archivo y elige qué hacer" : "Suelta el archivo en cualquier parte"}
+                        </p>
+                        <p className="text-sm text-tertiary">Se procesa en tu equipo: no se sube a ningún servidor.</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

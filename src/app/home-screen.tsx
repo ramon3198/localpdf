@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, Lock01, SearchLg, ShieldTick, Zap } from "@untitledui/icons";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, File06, Lock01, SearchLg, ShieldTick, XClose, Zap } from "@untitledui/icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/base/badges/badges";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { Notice } from "@/components/tool-shell";
+import { useFileReceiver } from "@/lib/file-drop";
+import { readableBytes } from "@/lib/pdf-utils";
+import { sendFilesToTool } from "@/lib/tool-handoff";
 import { type Tool, type ToolCategory, categories, searchTools, toolsByCategory } from "@/lib/tools";
 import { cx } from "@/utils/cx";
+
+const isPdf = (file: File) => file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+const isImage = (file: File) => /^image\/(jpeg|png)$/.test(file.type) || /\.(jpe?g|png)$/i.test(file.name);
+/** Tools that open a PDF. */
+const takesPdf = (tool: Tool) => tool.slug !== "image-to-pdf";
 
 const PROMISES = [
     { icon: ShieldTick, title: "Privado", text: "Tus archivos no se suben a ningún servidor." },
@@ -16,9 +27,10 @@ const PROMISES = [
 ];
 
 /** A row, not a tile: icon beside the text, so the whole catalogue fits in a screen or two. */
-const ToolCard = ({ tool }: { tool: Tool }) => (
+const ToolCard = ({ tool, onPick }: { tool: Tool; onPick?: (tool: Tool) => void }) => (
     <Link
         href={`/tools/${tool.slug}`}
+        onClick={onPick && (() => onPick(tool))}
         className={cx(
             "group relative flex h-full items-start gap-3 rounded-xl bg-primary p-3.5 ring-1 ring-secondary outline-focus-ring transition duration-150 ease-out ring-inset hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2",
             !tool.available && "bg-secondary_subtle",
@@ -61,19 +73,50 @@ const DemoVideo = ({ className }: { className?: string }) => (
     </figure>
 );
 
-const ToolGrid = ({ items }: { items: Tool[] }) => (
+const ToolGrid = ({ items, onPick }: { items: Tool[]; onPick?: (tool: Tool) => void }) => (
     <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
         {items.map((tool) => (
-            <ToolCard key={tool.slug} tool={tool} />
+            <ToolCard key={tool.slug} tool={tool} onPick={onPick} />
         ))}
     </div>
 );
 
 export const HomeScreen = () => {
+    const router = useRouter();
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState<ToolCategory | null>(null);
+    /** A PDF dropped or pasted on the page: the tool chosen next opens it. */
+    const [dropped, setDropped] = useState<File | null>(null);
+    const [dropNotice, setDropNotice] = useState<string | null>(null);
+    const dropRef = useRef<HTMLDivElement>(null);
+
+    // Files dropped or pasted here have no tool yet: one PDF waits for the person to choose; several PDFs can only be
+    // merged and images can only become a PDF, so those go straight to their tool.
+    useFileReceiver((files) => {
+        const pdfs = files.filter(isPdf);
+        const images = files.filter(isImage);
+        setDropNotice(null);
+        if (pdfs.length > 1) {
+            sendFilesToTool("merge", pdfs);
+            router.push("/tools/merge");
+        } else if (pdfs.length === 1) {
+            setDropped(pdfs[0]);
+        } else if (images.length) {
+            sendFilesToTool("image-to-pdf", images);
+            router.push("/tools/image-to-pdf");
+        } else {
+            setDropped(null);
+            setDropNotice("LocalPDF trabaja con archivos PDF e imágenes JPG o PNG.");
+        }
+    });
+    useEffect(() => {
+        if (dropped || dropNotice) dropRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, [dropped, dropNotice]);
+
+    const usable = (tool: Tool) => !dropped || takesPdf(tool);
+    const pick = dropped ? (tool: Tool) => sendFilesToTool(tool.slug, [dropped]) : undefined;
     const searching = query.trim().length > 0;
-    const matches = searchTools(query).filter((tool) => !category || tool.category === category);
+    const matches = searchTools(query).filter((tool) => (!category || tool.category === category) && usable(tool));
     const shownCategories = (Object.keys(categories) as ToolCategory[]).filter((c) => !category || c === category);
 
     return (
@@ -139,13 +182,34 @@ export const HomeScreen = () => {
             </section>
 
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 md:px-6 lg:px-10 lg:py-8">
+                {(dropped || dropNotice) && (
+                    <div ref={dropRef} aria-live="polite" className="scroll-mt-4">
+                        {dropped ? (
+                            <div className="flex items-center gap-3 rounded-xl bg-brand-primary_alt p-3.5 ring-2 ring-brand ring-inset">
+                                <FeaturedIcon icon={File06} color="brand" theme="light" size="md" className="shrink-0" />
+                                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                    <p className="truncate text-sm font-semibold text-primary">
+                                        {dropped.name} <span className="font-normal text-tertiary">· {readableBytes(dropped.size)}</span>
+                                    </p>
+                                    <p className="text-sm text-tertiary">Elige una herramienta para abrirlo.</p>
+                                </div>
+                                <ButtonUtility color="tertiary" tooltip="Quitar archivo" icon={XClose} size="sm" onClick={() => setDropped(null)} />
+                            </div>
+                        ) : (
+                            <Notice tone="warning" title="No se puede abrir ese archivo">
+                                {dropNotice}
+                            </Notice>
+                        )}
+                    </div>
+                )}
+
                 {searching ? (
                     matches.length ? (
                         <section className="flex flex-col gap-4" aria-live="polite">
                             <h2 className="text-sm font-semibold text-tertiary">
                                 {matches.length === 1 ? "1 herramienta" : `${matches.length} herramientas`} para “{query.trim()}”
                             </h2>
-                            <ToolGrid items={matches} />
+                            <ToolGrid items={matches} onPick={pick} />
                         </section>
                     ) : (
                         <div
@@ -164,7 +228,7 @@ export const HomeScreen = () => {
                                 <h2 className="text-lg font-semibold text-primary">{categories[c].label}</h2>
                                 <p className="text-sm text-tertiary">{categories[c].description}</p>
                             </div>
-                            <ToolGrid items={toolsByCategory(c)} />
+                            <ToolGrid items={toolsByCategory(c).filter(usable)} onPick={pick} />
                         </section>
                     ))
                 )}
